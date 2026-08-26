@@ -27,16 +27,16 @@ def health():
 
 @app.post("/analyze")
 async def analyze(
-    vcf: Optional[UploadFile] = File(None),
+    variants: Optional[UploadFile] = File(None),
     expression: Optional[UploadFile] = File(None),
     hla: Optional[UploadFile] = File(None),
 ):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        vcf_path = await _save_or_default(vcf, tmp_path, "variants.vcf.gz", DEMO_DIR / "variants.vcf.gz")
-        expression_path = await _save_or_default(expression, tmp_path, "expression.tsv", DEMO_DIR / "expression.tsv")
+        variants_path = await _save_or_default(variants, tmp_path, "variants.tsv.gz", DEMO_DIR / "variants.tsv.gz")
+        expression_path = await _save_or_default(expression, tmp_path, "expression.tsv.gz", DEMO_DIR / "expression.tsv.gz")
         hla_path = await _save_or_default(hla, tmp_path, "hla.tsv", DEMO_DIR / "hla.tsv")
-        result = run_pipeline(vcf_path, expression_path, hla_path)
+        result = run_pipeline(variants_path, expression_path, hla_path)
     return result
 
 

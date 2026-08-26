@@ -4,18 +4,19 @@ import streamlit as st
 
 API_URL = "http://localhost:8000"
 
-st.set_page_config(page_title="LUAD Precision Platform", layout="wide")
-st.title("LUAD Neoantigen & Targeted Therapy — Demo")
+st.set_page_config(page_title="LUAD Neoantigen & Targeted Therapy", layout="wide")
+st.title("LUAD Neoantigen & Targeted Therapy")
+st.caption("Default case: TCGA-38-4627 — real somatic variants + real tumor expression, synthetic HLA typing")
 
-st.sidebar.header("上传数据（留空则用内置 demo 数据）")
-vcf_file = st.sidebar.file_uploader("Somatic VCF (variants.vcf.gz)", type=["gz", "vcf"])
-expression_file = st.sidebar.file_uploader("Tumor expression (expression.tsv)", type=["tsv"])
+st.sidebar.header("上传数据（留空则用内置 TCGA-38-4627 病例）")
+variants_file = st.sidebar.file_uploader("Annotated somatic variants (variants.tsv.gz)", type=["gz", "tsv"])
+expression_file = st.sidebar.file_uploader("Tumor expression (expression.tsv.gz)", type=["gz", "tsv"])
 hla_file = st.sidebar.file_uploader("HLA typing (hla.tsv)", type=["tsv"])
 
 if st.sidebar.button("运行分析", type="primary"):
     files = {}
-    if vcf_file:
-        files["vcf"] = (vcf_file.name, vcf_file.getvalue())
+    if variants_file:
+        files["variants"] = (variants_file.name, variants_file.getvalue())
     if expression_file:
         files["expression"] = (expression_file.name, expression_file.getvalue())
     if hla_file:
@@ -29,6 +30,12 @@ if st.sidebar.button("运行分析", type="primary"):
 if "result" in st.session_state:
     result = st.session_state["result"]
 
+    st.subheader("Pipeline Funnel")
+    funnel = result["funnel"]
+    cols = st.columns(len(funnel))
+    for col, (label, value) in zip(cols, funnel.items()):
+        col.metric(label, value)
+
     st.subheader("Somatic Variants")
     st.dataframe(pd.DataFrame(result["variants"]), use_container_width=True)
 
@@ -41,4 +48,4 @@ if "result" in st.session_state:
     st.subheader("Neoantigen Ranking")
     st.dataframe(pd.DataFrame(result["neoantigens"]), use_container_width=True)
 else:
-    st.info("点击左侧「运行分析」查看结果（默认用内置 demo 数据）。")
+    st.info("点击左侧「运行分析」查看结果（默认用内置 TCGA-38-4627 病例）。")

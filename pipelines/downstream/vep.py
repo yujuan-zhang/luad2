@@ -1,48 +1,36 @@
-"""Mock VEP-style variant annotation.
+"""Load pre-annotated somatic variants.
 
-MOCK: real VEP integration (Ensembl VEP REST API, or local VEP Docker for
-batch use) will replace `_lookup_table` with an actual annotation call
-later. The interface (`annotate_variants`) stays the same so nothing else
-needs to change when that happens.
+This does not call VEP itself -- per the project architecture, VEP
+annotation happens upstream (nf-core/sarek -> VEP), so this stage expects
+an already-annotated variant table matching that output schema (SYMBOL,
+CHROM, POS, REF, ALT, CONSEQUENCE, HGVSp_Short, VAF_TUMOR, hotspot,
+FUNCTIONAL_IMPACT, ...). The demo file is real VEP-annotated output for
+TCGA-38-4627, not mock data.
 """
+import csv
 import gzip
 
-_lookup_table = {
-    ("chr7", 55191822, "T", "G"): {
-        "gene": "EGFR", "consequence": "missense_variant",
-        "protein_change": "p.L858R", "transcript_id": "ENST00000275493",
-    },
-    ("chr12", 25245350, "C", "A"): {
-        "gene": "KRAS", "consequence": "missense_variant",
-        "protein_change": "p.G12C", "transcript_id": "ENST00000256078",
-    },
-    ("chr7", 140753336, "A", "T"): {
-        "gene": "BRAF", "consequence": "missense_variant",
-        "protein_change": "p.V600E", "transcript_id": "ENST00000288602",
-    },
-    ("chr17", 7674220, "C", "T"): {
-        "gene": "TP53", "consequence": "missense_variant",
-        "protein_change": "p.R175H", "transcript_id": "ENST00000269305",
-    },
-}
+
+def _open(path):
+    path = str(path)
+    return gzip.open(path, "rt") if path.endswith(".gz") else open(path)
 
 
-def _open(vcf_path):
-    vcf_path = str(vcf_path)
-    return gzip.open(vcf_path, "rt") if vcf_path.endswith(".gz") else open(vcf_path)
-
-
-def annotate_variants(vcf_path):
+def annotate_variants(path):
     variants = []
-    with _open(vcf_path) as f:
-        for line in f:
-            if line.startswith("#"):
-                continue
-            chrom, pos, _id, ref, alt, *_ = line.rstrip("\n").split("\t")
-            key = (chrom, int(pos), ref, alt)
-            anno = _lookup_table.get(key, {
-                "gene": "NA", "consequence": "unknown",
-                "protein_change": "NA", "transcript_id": "NA",
+    with _open(path) as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            variants.append({
+                "chrom": row["CHROM"],
+                "pos": int(row["POS"]),
+                "ref": row["REF"],
+                "alt": row["ALT"],
+                "gene": row["SYMBOL"],
+                "consequence": row["CONSEQUENCE"],
+                "protein_change": row.get("HGVSp_Short") or "NA",
+                "dna_vaf": float(row["VAF_TUMOR"]) if row.get("VAF_TUMOR") else None,
+                "hotspot": row.get("hotspot") == "Y",
+                "functional_impact": row.get("FUNCTIONAL_IMPACT", ""),
             })
-            variants.append({"chrom": chrom, "pos": int(pos), "ref": ref, "alt": alt, **anno})
     return variants

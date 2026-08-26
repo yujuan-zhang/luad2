@@ -138,6 +138,26 @@ def is_actionable(match):
     return match.get("level") in ("A", "B") and match.get("significance") == "SENSITIVITYRESPONSE"
 
 
+_LEVEL_RANK = {"FDA-Approved": 0, "A": 1, "B": 2, "C": 3, "D": 4}
+
+
+def _dedupe(matches):
+    """Keep only sensitivity/response evidence (drop RESISTANCE -- that's a
+    caution, not a drug recommendation), and collapse repeat (gene,
+    mutation, drug) rows -- from CIViC citing the same drug across several
+    studies, or KB and CIViC both citing it -- down to the single
+    strongest piece of evidence."""
+    best = {}
+    for m in matches:
+        if m.get("significance") != "SENSITIVITYRESPONSE":
+            continue
+        key = (m["gene"], m["protein_change"], m["drug"])
+        rank = _LEVEL_RANK.get(m["level"], 9)
+        if key not in best or rank < best[key][0]:
+            best[key] = (rank, m)
+    return [m for _, m in best.values()]
+
+
 def match_drugs(variants, use_civic=True):
     matches = []
     for v in variants:
@@ -145,4 +165,4 @@ def match_drugs(variants, use_civic=True):
         matches.extend(_kb_matches(gene, protein_change, consequence))
         if use_civic:
             matches.extend(_civic_matches(gene, protein_change))
-    return matches
+    return _dedupe(matches)

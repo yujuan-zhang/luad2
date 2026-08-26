@@ -1,5 +1,5 @@
 {
-  "case_id": "DEMO-001",
+  "case_id": "TCGA-38-4627",
   "cancer_type": "LUAD",
-  "note": "synthetic demo case for local pipeline testing"
+  "note": "Real somatic variants (25, protein-altering) and real tumor gene expression (TPM, with GTEx-lung z-score/percentile) from the luad_workflow pipeline. HLA typing is synthetic (no real HLA available for this case), matching the case's Objective in the project plan."
 }
