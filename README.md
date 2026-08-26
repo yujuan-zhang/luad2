@@ -4,9 +4,11 @@ LUAD neoantigen / targeted-therapy prioritization pipeline. See project plan for
 
 ## 当前阶段：Phase 1 — 本地全链路打通
 
-`vep.py` / `oncokb.py` / `pvactools.py` 现在是 **mock 实现**（用固定的查表/伪随机逻辑模拟真实工具的输出），
+`vep.py` / `pvactools.py` 现在是 **mock 实现**（用固定的查表/伪随机逻辑模拟真实工具的输出），
 目的是先把 `demo 数据 → downstream 分析 → FastAPI → Streamlit` 这条链路跑通、看到网页结果。
-后续会把每个 mock 换成真实的 VEP / OncoKB / pVACtools 调用，接口（函数签名）保持不变。
+`civic.py` 已经是真实实现：curated 药物知识库 + CIViC（civicdb.org）GraphQL API 实时查询，
+不需要 OncoKB token。后续会把 `vep.py`/`pvactools.py` 换成真实的 VEP / pVACtools 调用，接口
+（函数签名）保持不变。
 
 ## 快速开始
 
@@ -31,7 +33,7 @@ streamlit run frontend/streamlit_app.py
 
 ```
 data/demo/            内置的假 demo 数据（VCF、expression、HLA）
-pipelines/downstream/ 核心分析逻辑：vep.py / oncokb.py / pvactools.py / main.py（串联）
+pipelines/downstream/ 核心分析逻辑：vep.py / civic.py / pvactools.py / main.py（串联）
 backend/               FastAPI，把 pipeline 包成 /analyze 接口
 frontend/               Streamlit 网页，调用 FastAPI 展示结果
 ```

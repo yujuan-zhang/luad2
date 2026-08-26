@@ -2,19 +2,19 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import oncokb, pvactools, vep
+from . import civic, pvactools, vep
 
 
 def run_pipeline(vcf_path, expression_path, hla_path):
     variants = vep.annotate_variants(vcf_path)
-    drug_matches = oncokb.match_drugs(variants)
+    drug_matches = civic.match_drugs(variants)
 
     # Actionable mutations go to the targeted-therapy branch; everything
     # else that clears the expression + HLA-presentation bar in pvactools
     # goes to neoantigen ranking instead. Mutually exclusive by design.
     actionable = {
         (m["gene"], m["protein_change"])
-        for m in drug_matches if oncokb.is_actionable(m)
+        for m in drug_matches if civic.is_actionable(m)
     }
     neoantigen_candidates = [
         v for v in variants if (v["gene"], v["protein_change"]) not in actionable

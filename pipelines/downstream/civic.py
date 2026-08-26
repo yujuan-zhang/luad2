@@ -1,4 +1,4 @@
-"""Targeted-drug matching without an OncoKB token.
+"""Targeted-drug matching via a curated knowledge base + live CIViC lookups.
 
 Two sources, combined:
   1. `DRUG_KB` — curated FDA-approved gene/mutation -> drug knowledge base
@@ -13,8 +13,8 @@ of level A/B with SENSITIVITYRESPONSE significance. Weaker CIViC evidence
 (level C/D, case studies) is still returned for visibility but does not
 count as actionable -- those mutations still flow to neoantigen ranking.
 
-A real OncoKB integration (once a license token is available) can be added
-as a third source later without changing `match_drugs`'s interface.
+A licensed evidence API (e.g. OncoKB, once a token is available) could be
+added as a third source later without changing `match_drugs`'s interface.
 """
 import re
 
