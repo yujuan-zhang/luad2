@@ -152,24 +152,33 @@ def build_kegg_url(pathway_id, mutated_genes, expressed_genes, high_expr_genes):
     return f"https://www.kegg.jp/kegg-bin/show_pathway?{pathway_id}&multi_query={multi_query}"
 
 
-def build_gene_table(pathway_genes, mutated_genes, expressed_genes, high_expr_genes, tpm_lookup):
-    """Mutated genes in this pathway, with their own expression status
-    attached (expression confirmation). Most highly expressed genes in any
-    pathway are unmutated housekeeping/signaling genes -- listing every one
-    of those would flood the table with noise, so only mutated genes are
-    rows here; expression on non-mutated genes is still shown in the image."""
-    mut_set = {g.upper() for g in mutated_genes} & set(pathway_genes)
+def build_gene_table(pathway_genes, variants, expressed_genes, high_expr_genes, tpm_lookup):
+    """One row per mutated variant site in this pathway's genes -- a gene
+    with two mutations (e.g. EGFR L62R and L858R) gets two rows -- with
+    genomic position, DNA change, protein change, and the gene's own
+    expression status attached (expression confirmation). Most highly
+    expressed genes in any pathway are unmutated housekeeping/signaling
+    genes -- listing every one of those would flood the table with noise,
+    so only mutated genes appear here; expression on non-mutated genes is
+    still shown in the image."""
+    members = set(pathway_genes)
     high_set = {g.upper() for g in high_expr_genes}
     expr_set = {g.upper() for g in expressed_genes} - high_set
 
     rows = []
-    for g in sorted(mut_set):
+    for v in variants:
+        gene = v["gene"].upper()
+        if gene not in members:
+            continue
         rows.append({
-            "gene": g,
-            "tumor_tpm": tpm_lookup.get(g),
-            "status": "High expression" if g in high_set else ("Expressed" if g in expr_set else "Not expressed"),
+            "gene": v["gene"],
+            "position": f"{v['chrom']}:{v['pos']}",
+            "dna_change": f"{v['ref']}>{v['alt']}",
+            "protein_change": v["protein_change"],
+            "tumor_tpm": tpm_lookup.get(gene),
+            "status": "High expression" if gene in high_set else ("Expressed" if gene in expr_set else "Not expressed"),
         })
-    rows.sort(key=lambda r: -(r["tumor_tpm"] or 0))
+    rows.sort(key=lambda r: (r["gene"], -(r["tumor_tpm"] or 0)))
     return rows
 
 
@@ -199,6 +208,6 @@ def analyze_pathways(variants, expression_df):
             "mutated_hit_genes": hit_genes,
             "image_png_base64": base64.b64encode(png_bytes).decode() if png_bytes else None,
             "kegg_url": build_kegg_url(pid, pw_mutated, pw_expressed, pw_high),
-            "gene_table": build_gene_table(pathway_genes[pid], pw_mutated, pw_expressed, pw_high, tpm_lookup),
+            "gene_table": build_gene_table(pathway_genes[pid], variants, pw_expressed, pw_high, tpm_lookup),
         })
     return results
