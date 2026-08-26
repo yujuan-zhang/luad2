@@ -46,7 +46,7 @@ def run_pipeline(vcf_path, expression_path, hla_path):
 if __name__ == "__main__":
     demo_dir = Path(__file__).resolve().parents[2] / "data" / "demo"
     result = run_pipeline(
-        demo_dir / "variants.tsv.gz",
+        demo_dir / "variants.vcf.gz",
         demo_dir / "expression.tsv.gz",
         demo_dir / "hla.tsv",
     )

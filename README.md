@@ -6,11 +6,14 @@ LUAD neoantigen / targeted-therapy prioritization pipeline. See project plan for
 
 默认 demo 病例是 **TCGA-38-4627**（来自 `luad_workflow` 项目已经跑过的真实结果）：
 
-- `data/demo/variants.tsv.gz`：真实的 25 个 protein-altering somatic variants，VEP 注释（gene/consequence/HGVSp/DNA VAF/hotspot/functional impact 都是真的）
+- `data/demo/variants.vcf.gz`：真实的 25 个 protein-altering somatic variants，未注释的原始 VCF —— 符合项目设计（用户上传 VCF，AWS VEP API 负责注释）
 - `data/demo/expression.tsv.gz`：真实的全基因组 tumor expression（TPM + GTEx-lung z-score/percentile）
 - `data/demo/hla.tsv`：**synthetic HLA**（这个病例没有真实 HLA typing，按项目计划明确标注为 synthetic）
 
-`vep.py` 不调用真实 VEP，而是加载已经注释好的变异表（VEP 标注这一步在 `luad_workflow` 里已经做过了）。
+`vep.py` 还不是真的调 VEP API（AWS 那一步还没搭），而是内部查表注释 —— 但表里的内容是真实的 VEP 注释结果
+（来自 `luad_workflow`，gene/consequence/HGVSp/DNA VAF/hotspot/functional impact 都是真的），只是注释这个
+*动作* 现在是本地查表完成，接口（`annotate_variants(vcf_path)`）跟真的调 VEP API 完全一样，以后接上真实
+VEP API 时只需要换内部实现。
 `civic.py` 是真实实现：curated 药物知识库 + CIViC（civicdb.org）GraphQL API 实时查询，不需要 OncoKB token。
 `pvactools.py` 里的 mutant peptide 序列和 MHC binding IC50 还是 **mock**（`MOCKPEP-` 开头、hash 出来的 IC50）——
 真实实现的下一步是接 Ensembl REST（取真实蛋白序列）+ IEDB REST（真实 binding 预测），两个都免费不需要 token。
@@ -50,7 +53,7 @@ streamlit run frontend/streamlit_app.py
 ## 目录结构
 
 ```
-data/demo/            默认病例 TCGA-38-4627：真实 variants + 真实 expression + synthetic HLA
+data/demo/            默认病例 TCGA-38-4627：真实 VCF + 真实 expression + synthetic HLA
 pipelines/downstream/ 核心分析逻辑：vep.py / civic.py / pvactools.py / main.py（串联）
 backend/               FastAPI，把 pipeline 包成 /analyze 接口
 frontend/               Streamlit 网页，调用 FastAPI 展示结果（含 pipeline funnel）

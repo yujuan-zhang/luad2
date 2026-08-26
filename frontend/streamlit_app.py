@@ -9,14 +9,14 @@ st.title("LUAD Neoantigen & Targeted Therapy")
 st.caption("Default case: TCGA-38-4627 — real somatic variants + real tumor expression, synthetic HLA typing")
 
 st.sidebar.header("上传数据（留空则用内置 TCGA-38-4627 病例）")
-variants_file = st.sidebar.file_uploader("Annotated somatic variants (variants.tsv.gz)", type=["gz", "tsv"])
+vcf_file = st.sidebar.file_uploader("Somatic VCF (variants.vcf.gz)", type=["gz", "vcf"])
 expression_file = st.sidebar.file_uploader("Tumor expression (expression.tsv.gz)", type=["gz", "tsv"])
 hla_file = st.sidebar.file_uploader("HLA typing (hla.tsv)", type=["tsv"])
 
 if st.sidebar.button("运行分析", type="primary"):
     files = {}
-    if variants_file:
-        files["variants"] = (variants_file.name, variants_file.getvalue())
+    if vcf_file:
+        files["vcf"] = (vcf_file.name, vcf_file.getvalue())
     if expression_file:
         files["expression"] = (expression_file.name, expression_file.getvalue())
     if hla_file:
