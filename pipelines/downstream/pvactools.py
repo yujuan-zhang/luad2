@@ -22,7 +22,10 @@ def _mock_ic50(peptide, allele):
     return 20 + (int(digest[:4], 16) % 480)  # arbitrary 20-500 nM range
 
 
-def predict_neoantigens(variants, expression_df, hla_alleles, expression_threshold=1.0):
+def predict_neoantigens(variants, expression_df, hla_alleles, expression_threshold=1.0, ic50_threshold=500.0):
+    """Rank candidate neoantigens among variants that are (a) expressed and
+    (b) presented by at least one HLA allele (IC50 below the standard
+    weak-binder cutoff of 500 nM)."""
     expr_lookup = dict(zip(expression_df["gene"], expression_df["tpm"]))
     results = []
     for v in variants:
@@ -33,12 +36,15 @@ def predict_neoantigens(variants, expression_df, hla_alleles, expression_thresho
             continue
         mutant_peptide = f"MOCKPEP-{v['protein_change']}"
         for allele in hla_alleles:
+            ic50 = _mock_ic50(mutant_peptide, allele)
+            if ic50 > ic50_threshold:
+                continue
             results.append({
                 "gene": v["gene"],
                 "protein_change": v["protein_change"],
                 "hla_allele": allele,
                 "peptide": mutant_peptide,
-                "ic50_nm": _mock_ic50(mutant_peptide, allele),
+                "ic50_nm": ic50,
                 "tumor_tpm": tpm,
             })
     results.sort(key=lambda r: r["ic50_nm"])
