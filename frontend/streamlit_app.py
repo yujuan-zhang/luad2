@@ -1,3 +1,5 @@
+import base64
+
 import pandas as pd
 import requests
 import streamlit as st
@@ -47,5 +49,18 @@ if "result" in st.session_state:
 
     st.subheader("Neoantigen Ranking")
     st.dataframe(pd.DataFrame(result["neoantigens"]), use_container_width=True)
+
+    st.subheader("Pathways")
+    pathways = result.get("pathways", [])
+    if not pathways:
+        st.info("没有命中任何核心 LUAD 通路（没有变异落在这 8 条通路的基因里）。")
+    else:
+        st.caption("绿色 = 突变基因 | 红色 = 高表达 (TPM ≥ 5) | 黄色 = 有表达 (TPM ≥ 1)")
+        for pw in pathways:
+            with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=True):
+                if pw["image_png_base64"]:
+                    st.image(base64.b64decode(pw["image_png_base64"]), use_container_width=True)
+                st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True)
+                st.caption(f"[KEGG 官网彩色链接（备用/对照)]({pw['kegg_url']})")
 else:
     st.info("点击左侧「运行分析」查看结果（默认用内置 TCGA-38-4627 病例）。")

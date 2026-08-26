@@ -31,6 +31,24 @@ Peptide-HLA pairs evaluated                102   (17 candidates x 6 HLA alleles)
 HLA-presented neoantigens (IC50 <= 500nM)   ~29
 ```
 
+## Pathway 可视化
+
+`pathway.py`（同一套设计思路来自 `luad_workflow/modules/06_pathway/kegg_viewer.py`）：自己在
+本地缓存的 KEGG 官方 PNG 上用 Pillow 叠色块，不调 pathview/cytoscape。通路成员基因用 gseapy 的
+KEGG_2021_Human gene set（本地缓存，不联网）；底图 + 基因框坐标是提前从 KEGG REST API/KGML 下载好
+缓存在 `pipelines/downstream/kegg_cache/pathways/` 的（这次是直接从 `luad_workflow` 拷贝过来的，
+没有重新下载）。
+
+固定检查 8 条 LUAD 核心通路（MAPK / PI3K-AKT / ErbB-EGFR / p53 / Cell Cycle / TGF-β / Wnt / VEGF），
+只渲染有命中突变基因的通路。颜色（跟 `luad_workflow` 版本不同，没有差异表达倍数，只看是否表达/高表达）：
+
+- 绿色 = 突变基因
+- 黄色 = 有表达（TPM ≥ 1）
+- 红色 = 较高表达（TPM ≥ 5）
+- 一个基因框同时符合多种状态时，切成竖条分别染色
+
+`build_kegg_url()` 保留了生成 KEGG 官网彩色链接的功能，作为备用/对照。
+
 ## 快速开始
 
 ```bash
@@ -53,8 +71,9 @@ streamlit run frontend/streamlit_app.py
 ## 目录结构
 
 ```
-data/demo/            默认病例 TCGA-38-4627：真实 VCF + 真实 expression + synthetic HLA
-pipelines/downstream/ 核心分析逻辑：vep.py / civic.py / pvactools.py / main.py（串联）
-backend/               FastAPI，把 pipeline 包成 /analyze 接口
-frontend/               Streamlit 网页，调用 FastAPI 展示结果（含 pipeline funnel）
+data/demo/                        默认病例 TCGA-38-4627：真实 VCF + 真实 expression + synthetic HLA
+pipelines/downstream/              核心分析逻辑：vep.py / civic.py / pvactools.py / pathway.py / main.py（串联）
+pipelines/downstream/kegg_cache/   KEGG 通路底图 PNG + 基因框坐标缓存（不联网）
+backend/                           FastAPI，把 pipeline 包成 /analyze 接口
+frontend/                          Streamlit 网页，调用 FastAPI 展示结果（含 pipeline funnel + 通路图）
 ```

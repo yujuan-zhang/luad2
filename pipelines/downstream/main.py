@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import civic, pvactools, vep
+from . import civic, pathway, pvactools, vep
 
 
 def run_pipeline(vcf_path, expression_path, hla_path):
@@ -25,6 +25,7 @@ def run_pipeline(vcf_path, expression_path, hla_path):
     hla_alleles = pvactools.load_hla(hla_path)
     expressed = pvactools.filter_expressed(neoantigen_candidates, expression_df)
     neoantigens = pvactools.predict_neoantigens(expressed, hla_alleles)
+    pathways = pathway.analyze_pathways(protein_altering, expression_df)
 
     funnel = {
         "Somatic variants (protein-altering)": len(protein_altering),
@@ -40,6 +41,7 @@ def run_pipeline(vcf_path, expression_path, hla_path):
         "variants": variants,
         "drug_matches": drug_matches,
         "neoantigens": neoantigens,
+        "pathways": pathways,
     }
 
 
@@ -57,4 +59,6 @@ if __name__ == "__main__":
                 print(f"  {k}: {v}")
         else:
             for row in rows:
+                row = {k: (f"<{len(v)} b64 chars>" if k == "image_png_base64" and v else v)
+                       for k, v in row.items()} if isinstance(row, dict) else row
                 print(row)
