@@ -10,12 +10,12 @@ st.set_page_config(page_title="LUAD Neoantigen & Targeted Therapy", layout="wide
 st.title("LUAD Neoantigen & Targeted Therapy")
 st.caption("Default case: TCGA-38-4627 — real somatic variants + real tumor expression, synthetic HLA typing")
 
-st.sidebar.header("上传数据（留空则用内置 TCGA-38-4627 病例）")
+st.sidebar.header("Upload data (leave blank to use the built-in TCGA-38-4627 case)")
 vcf_file = st.sidebar.file_uploader("Somatic VCF (variants.vcf.gz)", type=["gz", "vcf"])
 expression_file = st.sidebar.file_uploader("Tumor expression (expression.tsv.gz)", type=["gz", "tsv"])
 hla_file = st.sidebar.file_uploader("HLA typing (hla.tsv)", type=["tsv"])
 
-if st.sidebar.button("运行分析", type="primary"):
+if st.sidebar.button("Run analysis", type="primary"):
     files = {}
     if vcf_file:
         files["vcf"] = (vcf_file.name, vcf_file.getvalue())
@@ -24,7 +24,7 @@ if st.sidebar.button("运行分析", type="primary"):
     if hla_file:
         files["hla"] = (hla_file.name, hla_file.getvalue())
 
-    with st.spinner("分析中..."):
+    with st.spinner("Running analysis..."):
         resp = requests.post(f"{API_URL}/analyze", files=files)
     resp.raise_for_status()
     st.session_state["result"] = resp.json()
@@ -33,10 +33,8 @@ if "result" in st.session_state:
     result = st.session_state["result"]
 
     st.subheader("Pipeline Funnel")
-    funnel = result["funnel"]
-    cols = st.columns(len(funnel))
-    for col, (label, value) in zip(cols, funnel.items()):
-        col.metric(label, value)
+    st.dataframe(pd.DataFrame([result["funnel"]]), use_container_width=True, hide_index=True)
+    st.caption("Expressed: TPM ≥ 1  |  HLA-presented: IC50 ≤ 500nM")
 
     st.subheader("Somatic Variants")
     st.dataframe(pd.DataFrame(result["variants"]), use_container_width=True)
@@ -45,7 +43,7 @@ if "result" in st.session_state:
     if result["drug_matches"]:
         st.dataframe(pd.DataFrame(result["drug_matches"]), use_container_width=True)
     else:
-        st.info("没有匹配到已知靶点药物。")
+        st.info("No targeted drug matches found.")
 
     st.subheader("Neoantigen Ranking")
     st.dataframe(pd.DataFrame(result["neoantigens"]), use_container_width=True)
@@ -53,14 +51,14 @@ if "result" in st.session_state:
     st.subheader("Pathways")
     pathways = result.get("pathways", [])
     if not pathways:
-        st.info("没有命中任何核心 LUAD 通路（没有变异落在这 8 条通路的基因里）。")
+        st.info("No core LUAD pathway was hit (no variant falls in these 8 pathways' genes).")
     else:
-        st.caption("绿色 = 突变基因 | 红色 = 高表达 (TPM ≥ 5) | 黄色 = 有表达 (TPM ≥ 1)")
+        st.caption("Green = mutated gene | Red = highly expressed (TPM ≥ 5) | Yellow = expressed (TPM ≥ 1)")
         for pw in pathways:
             with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=True):
                 if pw["image_png_base64"]:
                     st.image(base64.b64decode(pw["image_png_base64"]), use_column_width=True)
                 st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True)
-                st.caption(f"[KEGG 官网彩色链接（备用/对照)]({pw['kegg_url']})")
+                st.caption(f"[KEGG's own colored pathway link (fallback/reference)]({pw['kegg_url']})")
 else:
-    st.info("点击左侧「运行分析」查看结果（默认用内置 TCGA-38-4627 病例）。")
+    st.info("Click “Run analysis” on the left to see results (defaults to the built-in TCGA-38-4627 case).")

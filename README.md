@@ -23,12 +23,12 @@ VEP API 时只需要换内部实现。
 `main.py` 现在会输出每一步筛掉多少变异，而不只是最终三张表：
 
 ```
-Somatic variants (protein-altering)         25
-Actionable variants (targeted therapy)       1   -> 进 drug_matches 分支
-Neoantigen candidate variants               24   -> 进 pvactools 分支
-Expression-supported variants (TPM >= 1)    17
-Peptide-HLA pairs evaluated                102   (17 candidates x 6 HLA alleles)
-HLA-presented neoantigens (IC50 <= 500nM)   ~29
+Protein-altering variants    25
+Actionable variants           1   -> 进 drug_matches 分支
+Neoantigen candidates        24   -> 进 pvactools 分支
+Expressed variants           17   (TPM >= 1)
+Peptide-HLA pairs           102   (17 candidates x 6 HLA alleles)
+HLA-presented                29   (IC50 <= 500nM)
 ```
 
 ## Pathway 可视化

@@ -27,13 +27,16 @@ def run_pipeline(vcf_path, expression_path, hla_path):
     neoantigens = pvactools.predict_neoantigens(expressed, hla_alleles)
     pathways = pathway.analyze_pathways(protein_altering, expression_df)
 
+    # Short labels -- these are column headers in the UI's funnel table.
+    # Threshold details (TPM >= 1, IC50 <= 500nM) are spelled out in a
+    # caption next to the table instead of crammed into the header.
     funnel = {
-        "Somatic variants (protein-altering)": len(protein_altering),
-        "Actionable variants (targeted therapy)": len(actionable),
-        "Neoantigen candidate variants": len(neoantigen_candidates),
-        "Expression-supported variants (TPM >= 1)": len(expressed),
-        "Peptide-HLA pairs evaluated": len(expressed) * len(hla_alleles),
-        "HLA-presented neoantigens (IC50 <= 500nM)": len(neoantigens),
+        "Protein-altering variants": len(protein_altering),
+        "Actionable variants": len(actionable),
+        "Neoantigen candidates": len(neoantigen_candidates),
+        "Expressed variants": len(expressed),
+        "Peptide-HLA pairs": len(expressed) * len(hla_alleles),
+        "HLA-presented": len(neoantigens),
     }
 
     return {
