@@ -59,7 +59,7 @@ if "result" in st.session_state:
         for pw in pathways:
             with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=True):
                 if pw["image_png_base64"]:
-                    st.image(base64.b64decode(pw["image_png_base64"]), use_container_width=True)
+                    st.image(base64.b64decode(pw["image_png_base64"]), use_column_width=True)
                 st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True)
                 st.caption(f"[KEGG 官网彩色链接（备用/对照)]({pw['kegg_url']})")
 else:
