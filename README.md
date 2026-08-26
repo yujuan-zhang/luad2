@@ -73,14 +73,37 @@ uvicorn backend.main:app --reload --port 8000
 streamlit run frontend/streamlit_app.py
 ```
 
-浏览器打开 Streamlit 给出的地址（默认 http://localhost:8501），点击「运行分析」即可看到内置 demo 数据的结果。
+浏览器打开 Streamlit 给出的地址（默认 http://localhost:8501），默认打开就直接看到 TCGA-38-4627 的结果
+（读的是预先算好的缓存，见下）。上传自己的 VCF/expression/HLA 再点「Run analysis」才会真的调后端跑一遍
+（约 1 分钟，真实 MHC binding 预测）。
+
+## Demo 结果预计算（避免每次都重新跑 ~1 分钟的真实预测）
+
+默认病例的结果不会变，没必要每次打开网页都重新跑一遍真实 pipeline。`scripts/precompute_demo.py` 把
+`run_pipeline()` 的结果存成 `data/demo/precomputed_result.json`（~550KB，已提交进仓库），前端默认直接读
+这个文件，秒开。改了 demo 数据或 pipeline 逻辑之后要记得重新生成：
+
+```bash
+python -m scripts.precompute_demo
+```
+
+## 部署（GitHub + Streamlit Community Cloud）
+
+`frontend/streamlit_app.py` 本身只依赖 `streamlit`/`pandas`/`requests`（不 import 任何 pipeline 代码），
+所以云端只需要 `frontend/requirements.txt` 这份轻量依赖，不需要装 `pvactools`/`tensorflow`/`mhcflurry`
+这些重依赖 —— 云端版本只展示预先算好的 `precomputed_result.json`；上传自定义文件走真实分析这个功能，
+需要本地起 FastAPI 后端（`uvicorn backend.main:app`）才能用，云端连不上后端会给出提示而不是报错崩溃。
+
+部署到 Streamlit Community Cloud：仓库推到 GitHub 后，在 share.streamlit.io 里选这个仓库，
+**Main file path 填 `frontend/streamlit_app.py`**（Cloud 会自动找同目录下的 `requirements.txt`）。
 
 ## 目录结构
 
 ```
-data/demo/                        默认病例 TCGA-38-4627：真实 VCF + 真实 expression + synthetic HLA
+data/demo/                        默认病例 TCGA-38-4627：真实 VCF + 真实 expression + synthetic HLA + 预计算结果
+scripts/precompute_demo.py         重新生成 data/demo/precomputed_result.json
 pipelines/downstream/              核心分析逻辑：vep.py / civic.py / pvactools.py / pathway.py / main.py（串联）
 pipelines/downstream/kegg_cache/   KEGG 通路底图 PNG + 基因框坐标缓存（不联网）
-backend/                           FastAPI，把 pipeline 包成 /analyze 接口
-frontend/                          Streamlit 网页，调用 FastAPI 展示结果（含 pipeline funnel + 通路图）
+backend/                           FastAPI，把 pipeline 包成 /analyze 接口（本地跑自定义上传时才需要）
+frontend/                          Streamlit 网页；frontend/requirements.txt 是云端部署用的轻量依赖
 ```
