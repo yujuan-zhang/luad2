@@ -6,3 +6,4 @@ venv/
 data/outputs/*
 !data/outputs/.gitkeep
 .DS_Store
+.claude/

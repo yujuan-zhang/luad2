@@ -2,7 +2,7 @@
 
 LUAD neoantigen / targeted-therapy prioritization pipeline. See project plan for full architecture.
 
-## 当前阶段：Phase 2 — 真实病例数据 + mock peptide/binding
+## 当前阶段：Phase 3 — 全链路真实（除了 VEP 本身还没接 AWS API）
 
 默认 demo 病例是 **TCGA-38-4627**（来自 `luad_workflow` 项目已经跑过的真实结果）：
 
@@ -15,20 +15,27 @@ LUAD neoantigen / targeted-therapy prioritization pipeline. See project plan for
 *动作* 现在是本地查表完成，接口（`annotate_variants(vcf_path)`）跟真的调 VEP API 完全一样，以后接上真实
 VEP API 时只需要换内部实现。
 `civic.py` 是真实实现：curated 药物知识库 + CIViC（civicdb.org）GraphQL API 实时查询，不需要 OncoKB token。
-`pvactools.py` 里的 mutant peptide 序列和 MHC binding IC50 还是 **mock**（`MOCKPEP-` 开头、hash 出来的 IC50）——
-真实实现的下一步是接 Ensembl REST（取真实蛋白序列）+ IEDB REST（真实 binding 预测），两个都免费不需要 token。
+
+`pvactools.py` 现在也是真实实现了：
+- **mutant peptide**：从 UniProt REST（真实蛋白序列，免费不需要 token）取该基因的 canonical 序列，在突变位置替换氨基酸，切出真实的 flanking peptide。只对 missense 变异做（stop_gained/frameshift/splice 会产生全新的下游序列，需要真正的 CDS 层建模才能算对，这里没做，会被跳过而不是编一个假的出来）。
+- **MHC binding**：真的装了 `pvactools`（7.1.2），并用它依赖的 `mhcflurry` 真实预测模型算 IC50 —— 不是通过完整 `pvacseq run`（那条路需要真 VEP 标注 + Wildtype/Frameshift plugin，我们没有），而是直接批量调 `mhcflurry-predict`（跟 pVACtools 内部包装类调的是同一个模型）。用 CMV/流感的经典强结合表位验证过预测结果是对的。
+- 装 mhcflurry 踩了个坑：它内部用的是老版 TF1 Keras API，新版 Keras 3 删掉了，需要装 `tf-keras` 兼容层 + 设 `TF_USE_LEGACY_KERAS=1`（`pvactools.py` 里已经处理了）。
+- 首次使用前还需要手动跑一次模型下载（不在 pip 依赖里，是单独的模型文件，135MB）：
+  ```bash
+  mhcflurry-downloads fetch models_class1_presentation
+  ```
 
 ## Pipeline Funnel
 
-`main.py` 现在会输出每一步筛掉多少变异，而不只是最终三张表：
+`main.py` 现在会输出每一步筛掉多少变异，而不只是最终三张表（数字是真实跑出来的，非固定）：
 
 ```
 Protein-altering variants    25
 Actionable variants           1   -> 进 drug_matches 分支
 Neoantigen candidates        24   -> 进 pvactools 分支
 Expressed variants           17   (TPM >= 1)
-Peptide-HLA pairs           102   (17 candidates x 6 HLA alleles)
-HLA-presented                29   (IC50 <= 500nM)
+Real peptide generated        ~14  (missense only, 真实蛋白序列取到 + 位点对得上)
+HLA-presented                ~69  (IC50 <= 500nM，真实 mhcflurry 预测)
 ```
 
 ## Pathway 可视化

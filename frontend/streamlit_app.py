@@ -24,8 +24,8 @@ if st.sidebar.button("Run analysis", type="primary"):
     if hla_file:
         files["hla"] = (hla_file.name, hla_file.getvalue())
 
-    with st.spinner("Running analysis..."):
-        resp = requests.post(f"{API_URL}/analyze", files=files)
+    with st.spinner("Running analysis... (real MHC binding prediction takes about a minute)"):
+        resp = requests.post(f"{API_URL}/analyze", files=files, timeout=300)
     resp.raise_for_status()
     st.session_state["result"] = resp.json()
 

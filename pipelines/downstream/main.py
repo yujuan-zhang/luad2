@@ -24,6 +24,12 @@ def run_pipeline(vcf_path, expression_path, hla_path):
     expression_df = pd.read_csv(expression_path, sep="\t")
     hla_alleles = pvactools.load_hla(hla_path)
     expressed = pvactools.filter_expressed(neoantigen_candidates, expression_df)
+    # generate_mutant_peptide only succeeds for missense variants with a
+    # fetchable real sequence and a matching reference residue -- see
+    # pvactools.py's module docstring for why nonsense/frameshift/splice
+    # are out of scope. Counted separately here since predict_neoantigens
+    # only returns the peptide-allele pairs that also clear the IC50 bar.
+    with_peptide = pvactools.variants_with_peptide(expressed)
     neoantigens = pvactools.predict_neoantigens(expressed, hla_alleles)
     pathways = pathway.analyze_pathways(protein_altering, expression_df)
 
@@ -35,7 +41,7 @@ def run_pipeline(vcf_path, expression_path, hla_path):
         "Actionable variants": len(actionable),
         "Neoantigen candidates": len(neoantigen_candidates),
         "Expressed variants": len(expressed),
-        "Peptide-HLA pairs": len(expressed) * len(hla_alleles),
+        "Real peptide generated": len(with_peptide),
         "HLA-presented": len(neoantigens),
     }
 
