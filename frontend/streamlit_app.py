@@ -33,7 +33,8 @@ if "result" in st.session_state:
     result = st.session_state["result"]
 
     st.subheader("Pipeline Funnel")
-    st.dataframe(pd.DataFrame([result["funnel"]]), use_container_width=True, hide_index=True)
+    funnel_df = pd.DataFrame(result["funnel"].items(), columns=["Stage", "Count"])
+    st.dataframe(funnel_df, use_container_width=False, hide_index=True)
     st.caption("Expressed: TPM ≥ 1  |  HLA-presented: IC50 ≤ 500nM")
 
     st.subheader("Somatic Variants")
