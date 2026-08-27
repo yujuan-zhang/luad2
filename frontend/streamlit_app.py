@@ -105,7 +105,7 @@ st.markdown(
     .stApp { background-color: #F8FAFC; }
     /* Room for the fixed navbar/footer bars (see below) so page content
        and the sidebar's own content never sit underneath them. */
-    .main .block-container { padding-top: 4.5rem; padding-bottom: 5rem; }
+    .main .block-container { padding-top: 4.5rem; padding-bottom: 3rem; }
     [data-testid="stSidebar"] {
         min-width: 230px; max-width: 230px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
@@ -162,10 +162,11 @@ st.markdown(
         bottom: 0;
         background: #FFFFFF;
         border-top: 1px solid #E2E8F0;
-        padding: 0.55rem 2rem;
+        padding: 0.5rem 2rem;
         color: #64748B;
         font-size: 0.78rem;
-        line-height: 1.4;
+        line-height: 1.3;
+        text-align: center;
     }
     .luad-footer a { color: #2563EB; text-decoration: none; font-weight: 600; }
     .luad-footer a:hover { text-decoration: underline; }
@@ -478,8 +479,9 @@ st.markdown(
 st.markdown(
     """
     <div class="luad-footer">
-      Yujuan Zhang, PhD | Professor<br>
-      <a href="https://github.com/yujuan-zhang" target="_blank">GitHub</a> · <a href="https://github.com/yujuan-zhang/luad2" target="_blank">⭐ Star this project</a><br>
+      Yujuan Zhang, PhD | Professor &nbsp;·&nbsp;
+      <a href="https://github.com/yujuan-zhang" target="_blank">GitHub</a> &nbsp;·&nbsp;
+      <a href="https://github.com/yujuan-zhang/luad2" target="_blank">⭐ Star this project</a> &nbsp;·&nbsp;
       © 2026 Yujuan Zhang. All rights reserved.
     </div>
     """,
