@@ -52,7 +52,11 @@ st.markdown(
     """
     <style>
     .stApp { background-color: #F8FAFC; }
-    .main .block-container { max-width: 1180px; padding-top: 1.5rem; padding-bottom: 3rem; }
+    /* No max-width here: the navbar/footer bars need to span the full
+       width of the main content pane (right of the sidebar) edge to edge,
+       not just a centered column -- a max-width on block-container would
+       constrain them the same as everything else. */
+    .main .block-container { padding-top: 1.5rem; padding-bottom: 0; }
     [data-testid="stSidebar"] {
         min-width: 230px; max-width: 230px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
@@ -84,8 +88,17 @@ st.markdown(
     .luad-navbar .luad-brand { color: #FFFFFF; font-weight: 800; font-size: 1.1rem; }
     .luad-navbar .luad-brand-sub { color: #BFDBFE; font-weight: 400; font-size: 0.92rem; margin-left: 0.5rem; }
 
-    .luad-footer { border-top: 1px solid #E5E7EB; margin-top: 2.5rem; padding-top: 1.2rem; color: #6B7280; font-size: 0.85rem; }
-    .luad-footer a { color: #2563EB; text-decoration: none; }
+    .luad-footer {
+        background: #1E3A8A;
+        border-radius: 12px 12px 0 0;
+        margin-top: 2.5rem;
+        padding: 1.2rem 1.4rem;
+        color: #BFDBFE;
+        font-size: 0.85rem;
+        line-height: 1.7;
+    }
+    .luad-footer a { color: #FFFFFF; text-decoration: none; font-weight: 600; }
+    .luad-footer a:hover { text-decoration: underline; }
 
     .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
     .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
