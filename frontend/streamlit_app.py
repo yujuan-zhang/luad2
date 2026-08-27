@@ -22,7 +22,7 @@ _IMAGE_WIDTH_KWARG = (
 
 _LEVEL_ORDER = {"FDA-Approved": 0, "A": 1, "B": 2, "C": 3, "D": 4}
 
-st.set_page_config(page_title="LUAD Neoantigen & Targeted Therapy", layout="wide")
+st.set_page_config(page_title="LUAD Therapy Prioritization", layout="wide")
 
 # Streamlit has no set_page_config knob for sidebar width, so narrow it with CSS.
 st.markdown(
@@ -34,7 +34,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("LUAD Neoantigen & Targeted Therapy")
+st.title("End-to-End Personalized Therapy Prioritization for LUAD")
+st.markdown(
+    "<div style='font-size:1.15rem; opacity:0.7; margin-top:-0.7rem; margin-bottom:0.6rem;'>"
+    "Neoantigen Prioritization and Targeted Therapy</div>",
+    unsafe_allow_html=True,
+)
 st.caption("Case: TCGA-38-4627 — real somatic variants + real tumor expression, synthetic HLA typing")
 
 
