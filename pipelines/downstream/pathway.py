@@ -140,20 +140,42 @@ def render_pathway(pathway_id, mutated_genes, expressed_genes, high_expr_genes):
     return buf.getvalue()
 
 
+_KEGG_URL_PREFIX = "https://www.kegg.jp/kegg-bin/show_pathway?map={}&multi_query="
+# KEGG's server hard-caps the whole request line at 2048 bytes (verified
+# empirically -- 2032 chars: 200 OK, 2048 chars: 403 Forbidden). Stay well
+# clear of that rather than hugging the exact boundary.
+_KEGG_URL_MAX_LEN = 1900
+
+
 def build_kegg_url(pathway_id, mutated_genes, expressed_genes, high_expr_genes):
-    """KEGG's own online colored-pathway link, kept as a fallback/reference view."""
+    """KEGG's own online colored-pathway link, kept as a fallback/reference
+    view. `map=` is required -- KEGG's CGI 400s without it, treating a bare
+    pathway ID as a missing 'mapno' parameter. A real tumor's expressed/
+    high-expression gene set can be large enough (this pathway's demo case:
+    179 genes, ~2.6KB of query string) to blow past KEGG's 2048-byte
+    request-line cap, so entries are added green (mutated) first -- always
+    worth keeping -- then red, then yellow, stopping once the next entry
+    would cross the length budget rather than generating a link that 403s."""
     mut_set = {g.upper() for g in mutated_genes}
     high_set = {g.upper() for g in high_expr_genes} - mut_set
     expr_set = ({g.upper() for g in expressed_genes} - mut_set) - high_set
 
-    lines = [f"{g}\tgreen" for g in sorted(mut_set)]
-    lines += [f"{g}\tred" for g in sorted(high_set)]
-    lines += [f"{g}\tyellow" for g in sorted(expr_set)]
-
-    if not lines:
+    ordered = (
+        [f"{g}\tgreen" for g in sorted(mut_set)]
+        + [f"{g}\tred" for g in sorted(high_set)]
+        + [f"{g}\tyellow" for g in sorted(expr_set)]
+    )
+    if not ordered:
         return f"https://www.kegg.jp/pathway/{pathway_id}"
-    multi_query = quote("\n".join(lines))
-    return f"https://www.kegg.jp/kegg-bin/show_pathway?{pathway_id}&multi_query={multi_query}"
+
+    prefix = _KEGG_URL_PREFIX.format(pathway_id)
+    kept = []
+    for line in ordered:
+        candidate = "\n".join(kept + [line])
+        if len(prefix) + len(quote(candidate)) > _KEGG_URL_MAX_LEN:
+            break
+        kept.append(line)
+    return prefix + quote("\n".join(kept))
 
 
 def build_gene_table(pathway_genes, variants, expressed_genes, high_expr_genes, tpm_lookup):
