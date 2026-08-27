@@ -113,7 +113,7 @@ st.markdown(
         padding-left: 2.5rem; padding-right: 2.5rem;
     }
     [data-testid="stSidebar"] {
-        min-width: 195px; max-width: 195px;
+        min-width: 172px; max-width: 172px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
     }
     [data-testid="stSidebarUserContent"] { padding-top: 4.5rem; }
@@ -190,8 +190,8 @@ st.markdown(
         margin-top: 2rem;
         border-top: 1px solid #E2E8F0;
         padding: 0.6rem 0;
-        color: #94A3B8;
-        font-size: 0.73rem;
+        color: #B0BAC7;
+        font-size: 0.71rem;
         line-height: 1.3;
         text-align: center;
     }
@@ -224,7 +224,10 @@ st.markdown(
     /* One border (the dropzone's own), not a wrapper box around it too --
        double-boxing read as more "raw widget" clutter, not less. */
     [data-testid="stFileUploader"] { margin-bottom: 0.3rem; }
-    [data-testid="stFileUploader"] label p { font-size: 0.85rem; font-weight: 600; }
+    [data-testid="stFileUploader"] label p { font-size: 0.8rem; font-weight: 600; }
+    /* "Drag and drop file here / Limit 200MB per file..." -- redundant
+       now that the label itself says the format and size limit. */
+    [data-testid="stFileUploaderDropzoneInstructions"] { display: none; }
     [data-testid="stFileUploaderDropzone"] {
         background: #F8FAFC !important;
         border: 1px dashed #CBD5E1 !important;
@@ -276,7 +279,14 @@ st.markdown(
     /* Best-effort "active" nav link: CSS :target only updates when a nav
        link is actually clicked (no JS scroll-spy), so this reflects the
        last section jumped to, not necessarily what's on screen. */
-    body:has(#home:target) .luad-navbar nav a[href="#home"],
+    /* Home reads as active by default (nothing else is a real page you can
+       "leave" here) and steps aside once another section is targeted. */
+    .luad-navbar nav a[href="#home"] { color: #FFFFFF; box-shadow: inset 0 -2px 0 #FFFFFF; }
+    body:has(#analysis:target) .luad-navbar nav a[href="#home"],
+    body:has(#results:target) .luad-navbar nav a[href="#home"],
+    body:has(#about:target) .luad-navbar nav a[href="#home"] {
+        color: #BFDBFE; box-shadow: none;
+    }
     body:has(#analysis:target) .luad-navbar nav a[href="#analysis"],
     body:has(#results:target) .luad-navbar nav a[href="#results"],
     body:has(#about:target) .luad-navbar nav a[href="#about"] {
@@ -344,9 +354,9 @@ def load_precomputed_demo():
 
 st.sidebar.markdown("#### Input Data")
 st.sidebar.caption("Leave blank to use the built-in TCGA-38-4627 case.")
-vcf_file = st.sidebar.file_uploader("① Somatic VCF", type=["gz", "vcf"])
-expression_file = st.sidebar.file_uploader("② Tumor Expression", type=["gz", "tsv"])
-hla_file = st.sidebar.file_uploader("③ HLA Typing", type=["tsv"])
+vcf_file = st.sidebar.file_uploader("① Somatic VCF — GZ/VCF, max 200MB", type=["gz", "vcf"])
+expression_file = st.sidebar.file_uploader("② Tumor Expression — GZ/TSV, max 200MB", type=["gz", "tsv"])
+hla_file = st.sidebar.file_uploader("③ HLA Typing — TSV, max 200MB", type=["tsv"])
 has_upload = bool(vcf_file or expression_file or hla_file)
 
 if st.sidebar.button("Run Analysis →", type="primary"):
@@ -554,15 +564,20 @@ with about_col1:
         "<div class='luad-card' style='height:100%;'>"
         "LUADtx is an end-to-end precision oncology platform for lung adenocarcinoma — from "
         "somatic variants and tumor expression to targeted-therapy evidence, pathway context, "
-        "and neoantigen prioritization. Built as a reproducible "
-        "<a href='https://civicdb.org' target='_blank'>CIViC</a>-backed research and portfolio project."
+        "and neoantigen prioritization. Developed as a reproducible research and portfolio "
+        "platform for precision oncology."
         "</div>",
         unsafe_allow_html=True,
     )
 with about_col2:
     stack_html = "<div class='luad-card' style='height:100%;'>"
     for group, tools in _ABOUT_STACK:
-        tags = " ".join(f"<span class='luad-badge luad-badge--muted'>{html.escape(t)}</span>" for t in tools)
+        tags = " ".join(
+            f"<a href='https://civicdb.org' target='_blank' style='text-decoration:none;'>"
+            f"<span class='luad-badge luad-badge--muted'>{html.escape(t)}</span></a>"
+            if t == "CIViC" else f"<span class='luad-badge luad-badge--muted'>{html.escape(t)}</span>"
+            for t in tools
+        )
         stack_html += (
             f"<div style='margin-bottom:0.5rem;'>"
             f"<div style='font-size:0.72rem; opacity:0.6; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:0.25rem;'>{group}</div>"
