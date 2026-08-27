@@ -46,12 +46,13 @@ def _ic50_badge(ic50):
     return "luad-badge--muted", "Weak binder"
 
 
-st.set_page_config(page_title="LUAD Therapy Prioritization", layout="wide")
+st.set_page_config(page_title="LUADtx", layout="wide")
 
 st.markdown(
     """
     <style>
     .stApp { background-color: #F8FAFC; }
+    .main .block-container { max-width: 1180px; padding-top: 1.5rem; padding-bottom: 3rem; }
     [data-testid="stSidebar"] {
         min-width: 230px; max-width: 230px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
@@ -66,6 +67,25 @@ st.markdown(
         padding-left: 0.7rem;
         margin-top: 1.6rem;
     }
+
+    .luad-navbar {
+        background: #1E3A8A;
+        border-radius: 12px;
+        padding: 0.9rem 1.4rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-bottom: 1.6rem;
+    }
+    .luad-navbar a { color: #BFDBFE; text-decoration: none; font-size: 0.88rem; }
+    .luad-navbar a:hover { color: #FFFFFF; }
+    .luad-navbar .luad-brand { color: #FFFFFF; font-weight: 800; font-size: 1.1rem; }
+    .luad-navbar .luad-brand-sub { color: #BFDBFE; font-weight: 400; font-size: 0.92rem; margin-left: 0.5rem; }
+
+    .luad-footer { border-top: 1px solid #E5E7EB; margin-top: 2.5rem; padding-top: 1.2rem; color: #6B7280; font-size: 0.85rem; }
+    .luad-footer a { color: #2563EB; text-decoration: none; }
 
     .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
     .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
@@ -105,13 +125,35 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("End-to-End Personalized Therapy Prioritization for LUAD")
 st.markdown(
-    "<div style='font-size:1.15rem; opacity:0.7; margin-top:-0.7rem; margin-bottom:0.6rem;'>"
-    "Neoantigen Prioritization and Targeted Therapy</div>",
+    """
+    <div id="home"></div>
+    <div class="luad-navbar">
+      <div><span class="luad-brand">LUADtx</span><span class="luad-brand-sub">| End-to-End Personalized Therapy Prioritization</span></div>
+      <div>
+        <a href="#home">Home</a> &nbsp;·&nbsp;
+        <a href="#analysis">Analysis</a> &nbsp;·&nbsp;
+        <a href="#results">Results</a> &nbsp;·&nbsp;
+        <a href="#about">About</a> &nbsp;·&nbsp;
+        <a href="https://github.com/yujuan-zhang/luad2" target="_blank">GitHub</a>
+      </div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
-st.caption("Case: TCGA-38-4627 — real somatic variants + real tumor expression, synthetic HLA typing")
+
+st.markdown("### Patient / Case")
+st.markdown(
+    """
+    <div class="luad-card luad-card--blue">
+      <b>TCGA-38-4627</b> &nbsp;·&nbsp; Lung Adenocarcinoma (LUAD)
+      <div style="opacity:0.7; font-size:0.88rem; margin-top:0.3rem;">
+        Real somatic variants + real tumor expression &nbsp;·&nbsp; Synthetic HLA typing
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 @st.cache_data
@@ -158,6 +200,7 @@ if "result" not in st.session_state:
 result = st.session_state["result"]
 
 # ── Analysis Flow: horizontal KPI strip ──────────────────────────────────────
+st.markdown("<div id='analysis'></div>", unsafe_allow_html=True)
 st.subheader("Analysis Flow")
 stages = list(result["funnel"].items())
 n = len(stages)
@@ -179,6 +222,7 @@ st.caption(
 )
 
 # ── Key Clinical Finding ──────────────────────────────────────────────────────
+st.markdown("<div id='results'></div>", unsafe_allow_html=True)
 st.subheader("Key Clinical Finding")
 drug_matches = result["drug_matches"]
 if not drug_matches:
@@ -275,3 +319,25 @@ else:
 # ── Supporting detail ─────────────────────────────────────────────────────────
 with st.expander(f"All Somatic Variants ({len(result['variants'])})"):
     st.dataframe(pd.DataFrame(result["variants"]), use_container_width=True)
+
+# ── About ──────────────────────────────────────────────────────────────────
+st.markdown("<div id='about'></div>", unsafe_allow_html=True)
+st.subheader("About")
+st.markdown(
+    "LUADtx integrates real somatic-variant annotation, real drug-evidence matching "
+    "([CIViC](https://civicdb.org)), real KEGG pathway context, and real neoantigen "
+    "prediction (UniProt sequences + pVACtools/MHCflurry binding) into one LUAD "
+    "precision-oncology pipeline. It's a research and portfolio demo, not a clinical tool."
+)
+
+# ── Footer ─────────────────────────────────────────────────────────────────
+st.markdown(
+    """
+    <div class="luad-footer">
+      Yujuan Zhang, PhD | Professor<br>
+      <a href="https://github.com/yujuan-zhang" target="_blank">GitHub</a> · <a href="#home">Homepage</a> · <a href="https://github.com/yujuan-zhang/luad2" target="_blank">⭐ Star this project</a><br>
+      © 2026 Yujuan Zhang. All rights reserved.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
