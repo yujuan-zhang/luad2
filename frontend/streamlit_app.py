@@ -59,6 +59,14 @@ st.markdown(
     [data-testid="stMetricValue"] { color: #2563EB; }
     .stButton > button[kind="primary"] { background-color: #2563EB; border-color: #2563EB; }
 
+    .stApp h1 { color: #1E3A8A; }
+    .stApp h2, .stApp h3 {
+        color: #1E3A8A;
+        border-left: 4px solid #2563EB;
+        padding-left: 0.7rem;
+        margin-top: 1.6rem;
+    }
+
     .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
     .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
     .stTabs [data-baseweb="tab-list"] button:nth-child(1)[aria-selected="true"] { color: #2563EB !important; }
@@ -80,6 +88,7 @@ st.markdown(
         margin-bottom: 0.9rem;
     }
     .luad-card--blue { border-left: 3px solid #2563EB; }
+    .luad-card--flow { background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 65%); border-color: #DBEAFE; }
     .luad-card--teal { border-left: 3px solid #0F766E; }
     .luad-card--rank1 { border: 1.5px solid #2563EB; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.12); }
 
@@ -152,16 +161,16 @@ result = st.session_state["result"]
 st.subheader("Analysis Flow")
 stages = list(result["funnel"].items())
 n = len(stages)
-flow_html = "<div class='luad-card' style='display:flex; align-items:flex-start;'>"
+flow_html = "<div class='luad-card luad-card--flow' style='display:flex; align-items:flex-start;'>"
 for i, (label, value) in enumerate(stages):
     flow_html += (
         "<div style='flex:1; text-align:center;'>"
         f"<div style='font-size:0.8rem; opacity:0.65; line-height:1.25; min-height:2.1em;'>{html.escape(label)}</div>"
-        f"<div style='font-size:1.9rem; font-weight:600; line-height:1.1; color:#1F2937;'>{value}</div>"
+        f"<div style='font-size:1.9rem; font-weight:700; line-height:1.1; color:#2563EB;'>{value}</div>"
         "</div>"
     )
     if i < n - 1:
-        flow_html += "<div style='font-size:1.6rem; padding-top:2.1rem; opacity:0.4; color:#1F2937;'>→</div>"
+        flow_html += "<div style='font-size:1.6rem; padding-top:2.1rem; color:#93C5FD;'>→</div>"
 flow_html += "</div>"
 st.markdown(flow_html, unsafe_allow_html=True)
 st.caption(
