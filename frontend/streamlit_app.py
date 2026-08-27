@@ -1,4 +1,5 @@
 import base64
+import inspect
 import json
 from pathlib import Path
 
@@ -8,6 +9,16 @@ import streamlit as st
 
 API_URL = "http://localhost:8000"
 PRECOMPUTED_PATH = Path(__file__).resolve().parent.parent / "data" / "demo" / "precomputed_result.json"
+
+# st.image()'s width kwarg was renamed use_column_width -> use_container_width
+# across streamlit versions; local dev and Streamlit Cloud can end up on
+# different ones (Cloud resolves frontend/requirements.txt independently),
+# so pick whichever this installed version actually supports.
+_IMAGE_WIDTH_KWARG = (
+    "use_container_width"
+    if "use_container_width" in inspect.signature(st.image).parameters
+    else "use_column_width"
+)
 
 st.set_page_config(page_title="LUAD Neoantigen & Targeted Therapy", layout="wide")
 st.title("LUAD Neoantigen & Targeted Therapy")
@@ -83,6 +94,6 @@ else:
     for pw in pathways:
         with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=True):
             if pw["image_png_base64"]:
-                st.image(base64.b64decode(pw["image_png_base64"]), use_column_width=True)
+                st.image(base64.b64decode(pw["image_png_base64"]), **{_IMAGE_WIDTH_KWARG: True})
             st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True)
             st.caption(f"[KEGG's own colored pathway link (fallback/reference)]({pw['kegg_url']})")
