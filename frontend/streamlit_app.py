@@ -1,4 +1,5 @@
 import base64
+import html
 import inspect
 import json
 from pathlib import Path
@@ -22,13 +23,74 @@ _IMAGE_WIDTH_KWARG = (
 
 _LEVEL_ORDER = {"FDA-Approved": 0, "A": 1, "B": 2, "C": 3, "D": 4}
 
+# Generic-name systemic therapies that sometimes show up in CIViC evidence
+# alongside real targeted agents (e.g. an EGFR L858R evidence item citing
+# "Carboplatin" as part of a combo regimen) -- these aren't targeted
+# therapies and shouldn't be presented as if they were.
+_NON_TARGETED_DRUGS = {
+    "chemotherapy", "carboplatin", "cisplatin", "pemetrexed", "paclitaxel",
+    "docetaxel", "gemcitabine", "vinorelbine", "etoposide", "doxorubicin",
+    "pembrolizumab", "nivolumab", "atezolizumab", "durvalumab", "ipilimumab",
+}
+
+
+def _is_targeted_drug(name):
+    return name.strip().lower() not in _NON_TARGETED_DRUGS
+
+
+def _ic50_badge(ic50):
+    if ic50 < 50:
+        return "luad-badge--strong", "Strong binder"
+    if ic50 < 150:
+        return "luad-badge--info", "Binder"
+    return "luad-badge--muted", "Weak binder"
+
+
 st.set_page_config(page_title="LUAD Therapy Prioritization", layout="wide")
 
-# Streamlit has no set_page_config knob for sidebar width, so narrow it with CSS.
 st.markdown(
     """
     <style>
-    [data-testid="stSidebar"] { min-width: 230px; max-width: 230px; }
+    .stApp { background-color: #F8FAFC; }
+    [data-testid="stSidebar"] {
+        min-width: 230px; max-width: 230px;
+        background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
+    }
+    [data-testid="stMetricValue"] { color: #2563EB; }
+    .stButton > button[kind="primary"] { background-color: #2563EB; border-color: #2563EB; }
+
+    .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
+    .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
+    .stTabs [data-baseweb="tab-list"] button:nth-child(1)[aria-selected="true"] { color: #2563EB !important; }
+    .stTabs [data-baseweb="tab-list"] button:nth-child(2)[aria-selected="true"] { color: #0F766E !important; }
+    .stTabs [data-baseweb="tab-highlight"] { background-color: #2563EB; }
+
+    [data-testid="stExpander"] {
+        border: 1px solid #E5E7EB !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+
+    .luad-card {
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        background: #FFFFFF;
+        margin-bottom: 0.9rem;
+    }
+    .luad-card--blue { border-left: 3px solid #2563EB; }
+    .luad-card--teal { border-left: 3px solid #0F766E; }
+    .luad-card--rank1 { border: 1.5px solid #2563EB; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.12); }
+
+    .luad-badge {
+        display: inline-block; padding: 0.16rem 0.6rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .luad-badge--fda { background: #DBEAFE; color: #1D4ED8; }
+    .luad-badge--strong { background: #CCFBF1; color: #0F766E; }
+    .luad-badge--info { background: #DBEAFE; color: #2563EB; }
+    .luad-badge--muted { background: #F1F5F9; color: #475569; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -86,30 +148,26 @@ if "result" not in st.session_state:
 
 result = st.session_state["result"]
 
-# ── Pipeline Funnel: horizontal KPI strip ────────────────────────────────────
-st.subheader("Pipeline Funnel")
+# ── Analysis Flow: horizontal KPI strip ──────────────────────────────────────
+st.subheader("Analysis Flow")
 stages = list(result["funnel"].items())
 n = len(stages)
-cols = st.columns([4, 1] * (n - 1) + [4])
+flow_html = "<div class='luad-card' style='display:flex; align-items:flex-start;'>"
 for i, (label, value) in enumerate(stages):
-    with cols[i * 2]:
-        # st.metric's built-in label truncates with an ellipsis instead of
-        # wrapping when the column is this narrow -- a plain markdown label
-        # above the number wraps onto a second line instead.
-        st.markdown(
-            f"<div style='text-align:center;'>"
-            f"<div style='font-size:0.8rem; opacity:0.65; line-height:1.25; min-height:2.1em;'>{label}</div>"
-            f"<div style='font-size:1.9rem; font-weight:600; line-height:1.1;'>{value}</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
+    flow_html += (
+        "<div style='flex:1; text-align:center;'>"
+        f"<div style='font-size:0.8rem; opacity:0.65; line-height:1.25; min-height:2.1em;'>{html.escape(label)}</div>"
+        f"<div style='font-size:1.9rem; font-weight:600; line-height:1.1; color:#1F2937;'>{value}</div>"
+        "</div>"
+    )
     if i < n - 1:
-        with cols[i * 2 + 1]:
-            st.markdown(
-                "<div style='text-align:center; font-size:1.6rem; padding-top:2.1rem; opacity:0.5;'>→</div>",
-                unsafe_allow_html=True,
-            )
-st.caption("Expressed: TPM ≥ 1  |  HLA-presented: IC50 ≤ 500nM")
+        flow_html += "<div style='font-size:1.6rem; padding-top:2.1rem; opacity:0.4; color:#1F2937;'>→</div>"
+flow_html += "</div>"
+st.markdown(flow_html, unsafe_allow_html=True)
+st.caption(
+    "Expressed: TPM ≥ 1  ·  Peptides: real UniProt sequence + missense substitution  ·  "
+    "Peptide-HLA Pairs: candidate 8-11mer windows × HLA alleles evaluated  ·  Presented: IC50 ≤ 500nM"
+)
 
 # ── Key Clinical Finding ──────────────────────────────────────────────────────
 st.subheader("Key Clinical Finding")
@@ -121,13 +179,33 @@ else:
     drug_df["_rank"] = drug_df["level"].map(_LEVEL_ORDER).fillna(9)
     for (gene, change), group in drug_df.groupby(["gene", "protein_change"], sort=False):
         group = group.sort_values("_rank")
-        drugs = list(dict.fromkeys(group["drug"]))  # unique, evidence-ranked order
-        levels = ", ".join(sorted(group["level"].unique(), key=lambda lv: _LEVEL_ORDER.get(lv, 9)))
-        sources = ", ".join(sorted(group["source"].unique()))
-        with st.container(border=True):
-            st.markdown(f"#### {gene} {change} — Actionable Driver")
-            st.markdown(f"**Recommended targeted therapies:** {' / '.join(drugs)}")
-            st.caption(f"Evidence: {levels}  ·  Source: {sources}")
+        targeted = group[group["drug"].apply(_is_targeted_drug)]
+        other = group[~group["drug"].apply(_is_targeted_drug)]
+
+        targeted_drugs = list(dict.fromkeys(targeted["drug"]))  # unique, evidence-ranked order
+        top_drugs = targeted_drugs[:3]
+        more_drugs = targeted_drugs[3:]
+        top_level = targeted["level"].iloc[0] if not targeted.empty else group["level"].iloc[0]
+        badge_class = "luad-badge--fda" if top_level == "FDA-Approved" else "luad-badge--info"
+
+        st.markdown(
+            "<div class='luad-card luad-card--blue'>"
+            f"<div style='font-size:1.05rem; font-weight:700; margin-bottom:0.4rem;'>"
+            f"{html.escape(gene)} {html.escape(change)} — Actionable Driver</div>"
+            f"<span class='luad-badge {badge_class}'>{html.escape(top_level)}</span>"
+            f"<div style='margin-top:0.5rem;'><b>Recommended targeted therapies:</b> "
+            f"{html.escape(' / '.join(top_drugs)) if top_drugs else '—'}</div>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        with st.expander("View all evidence"):
+            if more_drugs:
+                st.markdown(f"**Additional targeted-therapy evidence:** {', '.join(more_drugs)}")
+            if not other.empty:
+                other_drugs = list(dict.fromkeys(other["drug"]))
+                st.markdown(f"**Other systemic therapy evidence (not targeted):** {', '.join(other_drugs)}")
+            st.dataframe(group.drop(columns=["_rank"]), use_container_width=True)
 
 # ── Tabs: the two main analysis branches ─────────────────────────────────────
 tab_therapy, tab_neo = st.tabs(["Targeted Therapy", "Neoantigen / INT"])
@@ -148,14 +226,25 @@ with tab_neo:
         top5 = neoantigens[:5]
         cols = st.columns(len(top5))
         for rank, (col, epitope) in enumerate(zip(cols, top5), start=1):
+            badge_class, badge_text = _ic50_badge(epitope["ic50_nm"])
+            vaf = epitope.get("dna_vaf")
+            vaf_text = f"{vaf:.2f}" if vaf is not None else "—"
+            rank_class = " luad-card--rank1" if rank == 1 else ""
+            card_html = (
+                f"<div class='luad-card luad-card--teal{rank_class}'>"
+                f"<div style='font-size:0.72rem; opacity:0.6; font-weight:700; letter-spacing:0.03em;'>RANK #{rank}</div>"
+                f"<div style='font-size:1rem; font-weight:700; margin:0.15rem 0 0.5rem;'>"
+                f"{html.escape(epitope['gene'])} {html.escape(epitope['protein_change'])}</div>"
+                f"<div style='font-family:monospace; font-size:0.82rem; background:#F1F5F9; "
+                f"border-radius:6px; padding:0.3rem 0.45rem; margin-bottom:0.5rem; word-break:break-all;'>"
+                f"{html.escape(epitope['peptide'])}</div>"
+                f"<span class='luad-badge {badge_class}'>{badge_text} · {epitope['ic50_nm']} nM</span>"
+                f"<div style='font-size:0.8rem; opacity:0.75; margin-top:0.5rem;'>HLA {html.escape(epitope['hla_allele'])}</div>"
+                f"<div style='font-size:0.8rem; opacity:0.75;'>TPM {epitope['tumor_tpm']:.1f} · VAF {vaf_text}</div>"
+                "</div>"
+            )
             with col:
-                with st.container(border=True):
-                    st.markdown(f"**#{rank} {epitope['gene']} {epitope['protein_change']}**")
-                    st.code(epitope["peptide"], language=None)
-                    st.caption(f"HLA {epitope['hla_allele']}")
-                    st.metric("IC50 (nM)", epitope["ic50_nm"])
-                    vaf = epitope.get("dna_vaf")
-                    st.caption(f"TPM {epitope['tumor_tpm']:.1f}  ·  VAF {vaf:.2f}" if vaf is not None else f"TPM {epitope['tumor_tpm']:.1f}")
+                st.markdown(card_html, unsafe_allow_html=True)
 
         st.markdown(f"##### Full Ranking ({len(neoantigens)})")
         st.dataframe(pd.DataFrame(neoantigens), use_container_width=True)

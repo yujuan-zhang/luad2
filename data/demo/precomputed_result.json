@@ -1,11 +1,11 @@
 {
   "funnel": {
-    "Protein-altering variants": 25,
-    "Actionable variants": 1,
-    "Neoantigen candidates": 24,
-    "Expressed variants": 17,
-    "Real peptide generated": 12,
-    "HLA-presented": 69
+    "Variants": 25,
+    "Neoantigen Candidates": 24,
+    "Expressed": 17,
+    "Peptides": 12,
+    "Peptide-HLA Pairs": 2736,
+    "Presented": 69
   },
   "variants": [
     {

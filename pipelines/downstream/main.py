@@ -30,19 +30,24 @@ def run_pipeline(vcf_path, expression_path, hla_path):
     # are out of scope. Counted separately here since predict_neoantigens
     # only returns the peptide-allele pairs that also clear the IC50 bar.
     with_peptide = pvactools.variants_with_peptide(expressed)
-    neoantigens = pvactools.predict_neoantigens(expressed, hla_alleles)
+    neoantigens, peptide_hla_pairs = pvactools.predict_neoantigens(expressed, hla_alleles)
     pathways = pathway.analyze_pathways(protein_altering, expression_df)
 
-    # Short labels -- these are column headers in the UI's funnel table.
-    # Threshold details (TPM >= 1, IC50 <= 500nM) are spelled out in a
-    # caption next to the table instead of crammed into the header.
+    # This is the neoantigen branch's flow specifically, so the actionable
+    # variant that diverged to the targeted-therapy branch isn't a stage
+    # here (it's surfaced in Key Clinical Finding instead) -- including it
+    # would make the "funnel" visually grow partway through, which reads as
+    # broken rather than as "one peptide can match several HLA alleles".
+    # Short labels -- these are column headers in the UI. Threshold details
+    # (TPM >= 1, IC50 <= 500nM) are spelled out in a caption instead of
+    # crammed into the header.
     funnel = {
-        "Protein-altering variants": len(protein_altering),
-        "Actionable variants": len(actionable),
-        "Neoantigen candidates": len(neoantigen_candidates),
-        "Expressed variants": len(expressed),
-        "Real peptide generated": len(with_peptide),
-        "HLA-presented": len(neoantigens),
+        "Variants": len(protein_altering),
+        "Neoantigen Candidates": len(neoantigen_candidates),
+        "Expressed": len(expressed),
+        "Peptides": len(with_peptide),
+        "Peptide-HLA Pairs": peptide_hla_pairs,
+        "Presented": len(neoantigens),
     }
 
     return {

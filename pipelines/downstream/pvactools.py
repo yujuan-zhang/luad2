@@ -199,6 +199,10 @@ def predict_neoantigens(expressed_variants, hla_alleles, ic50_threshold=500.0, t
     prediction (mhcflurry), kept only where the predicted epitope window
     actually covers the mutated residue and clears the HLA-presentation
     IC50 cutoff.
+
+    Returns (results, evaluated_pairs) -- evaluated_pairs is the real count
+    of (variant, allele, candidate-epitope-window) triples submitted to
+    mhcflurry, for funnel reporting.
     """
     candidates = []  # (variant, mutation_position, [candidate epitope windows])
     all_peptides = set()
@@ -213,8 +217,10 @@ def predict_neoantigens(expressed_variants, hla_alleles, ic50_threshold=500.0, t
         candidates.append((v, windows))
         all_peptides.update(windows)
 
+    evaluated_pairs = sum(len(windows) for _, windows in candidates) * len(hla_alleles)
+
     if not candidates or not hla_alleles or not all_peptides:
-        return []
+        return [], evaluated_pairs
 
     with tempfile.TemporaryDirectory(dir=tmp_dir) as work_dir:
         binding = _run_mhcflurry(sorted(all_peptides), hla_alleles, work_dir)
@@ -242,4 +248,4 @@ def predict_neoantigens(expressed_variants, hla_alleles, ic50_threshold=500.0, t
                     "functional_impact": v.get("functional_impact"),
                 })
     results.sort(key=lambda r: r["ic50_nm"])
-    return results
+    return results, evaluated_pairs
