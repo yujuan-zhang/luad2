@@ -10,6 +10,7 @@ import streamlit as st
 
 API_URL = "http://localhost:8000"
 PRECOMPUTED_PATH = Path(__file__).resolve().parent.parent / "data" / "demo" / "precomputed_result.json"
+CASE_METADATA_PATH = Path(__file__).resolve().parent.parent / "data" / "demo" / "case_metadata.json"
 
 # st.image()'s width kwarg was renamed use_column_width -> use_container_width
 # across streamlit versions; local dev and Streamlit Cloud can end up on
@@ -330,15 +331,28 @@ st.markdown(
 )
 
 st.markdown("### Patient / Case")
+_case_meta = json.loads(CASE_METADATA_PATH.read_text())
+_clinical = _case_meta.get("clinical", {})
+_clinical_line = " &nbsp;·&nbsp; ".join(
+    html.escape(str(v)) for v in [
+        _clinical.get("sex"),
+        f"Age {_clinical.get('age_at_diagnosis')}" if _clinical.get("age_at_diagnosis") is not None else None,
+        _clinical.get("stage"),
+        f"Vital status: {_clinical.get('vital_status')}" if _clinical.get("vital_status") else None,
+        f"Smoking history: {_clinical.get('smoking_history')}" if _clinical.get("smoking_history") else None,
+    ] if v
+)
 st.markdown(
-    """
+    f"""
     <div class="luad-card luad-card--accent-top">
       <span class="luad-badge luad-badge--info">TCGA-38-4627</span>
       <span class="luad-badge luad-badge--info">LUAD</span>
       <span class="luad-badge luad-badge--muted">Demo Case</span>
+      <div style="margin-top:0.5rem; font-size:0.85rem; opacity:0.8;">{_clinical_line}</div>
       <div style="margin-top:0.6rem;">
         <span class="luad-badge luad-badge--success">✓ Somatic VCF</span>
         <span class="luad-badge luad-badge--success">✓ Tumor RNA</span>
+        <span class="luad-badge luad-badge--success">✓ Real Clinical (GDC)</span>
         <span class="luad-badge luad-badge--warning">⚠ Synthetic HLA</span>
       </div>
     </div>

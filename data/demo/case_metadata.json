@@ -1,5 +1,17 @@
 {
   "case_id": "TCGA-38-4627",
   "cancer_type": "LUAD",
-  "note": "Real somatic variants (25, protein-altering) and real tumor gene expression (TPM, with GTEx-lung z-score/percentile) from the luad_workflow pipeline. HLA typing is synthetic (no real HLA available for this case), matching the case's Objective in the project plan."
+  "clinical": {
+    "sex": "Female",
+    "age_at_diagnosis": 64.4,
+    "vital_status": "Dead",
+    "race": "White",
+    "ethnicity": "Not Hispanic or Latino",
+    "stage": "Stage IIA",
+    "stage_tnm": "T1b N1 M0",
+    "primary_diagnosis": "Adenocarcinoma, NOS",
+    "smoking_history": "Not available",
+    "overall_survival_days": 1147.0
+  },
+  "note": "Real somatic variants (25, protein-altering) and real tumor gene expression (TPM, with GTEx-lung z-score/percentile) from the luad_workflow pipeline. Clinical fields above are real GDC (api.gdc.cancer.gov/cases, TCGA-LUAD) data for this case -- smoking_history is genuinely not recorded for this patient in GDC, shown as 'Not available' rather than guessed. HLA typing is synthetic (no real HLA available for this case), matching the case's Objective in the project plan."
 }
