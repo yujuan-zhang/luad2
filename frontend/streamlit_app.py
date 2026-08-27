@@ -524,7 +524,7 @@ with tab_neo:
 st.subheader("Affected Pathways")
 pathways = result.get("pathways", [])
 if not pathways:
-    st.info("No core LUAD pathway was hit (no variant falls in these 8 pathways' genes).")
+    st.info("No pathway was hit (no variant falls in any of the 79 cancer-related KEGG pathways tracked).")
 else:
     st.markdown(
         "<div style='font-size:0.82rem; color:#64748B; margin-bottom:0.6rem;'>"
@@ -538,8 +538,13 @@ else:
     if "selected_pathway" not in st.session_state:
         st.session_state["selected_pathway"] = pathways[0]["pathway_id"]
 
-    summary_cols = st.columns(len(pathways))
-    for col, pw in zip(summary_cols, pathways):
+    # pathways is already sorted by hit-gene count descending (get_hit_pathways) --
+    # a quick-select row of the top few, plus a dropdown for the full list, scales
+    # to any hit count instead of squeezing one column per pathway (up to 79).
+    TOP_N_BUTTONS = 6
+    top_pathways = pathways[:TOP_N_BUTTONS]
+    quick_cols = st.columns(len(top_pathways))
+    for col, pw in zip(quick_cols, top_pathways):
         n_genes = len(pw["mutated_hit_genes"])
         is_active = st.session_state["selected_pathway"] == pw["pathway_id"]
         with col:
@@ -550,6 +555,18 @@ else:
                 type="primary" if is_active else "secondary",
             ):
                 st.session_state["selected_pathway"] = pw["pathway_id"]
+
+    if len(pathways) > TOP_N_BUTTONS:
+        all_ids = [p["pathway_id"] for p in pathways]
+        labels = {p["pathway_id"]: f"{p['name']} · {len(p['mutated_hit_genes'])} gene(s)" for p in pathways}
+        current_idx = all_ids.index(st.session_state["selected_pathway"]) if st.session_state["selected_pathway"] in all_ids else 0
+        chosen = st.selectbox(
+            f"Or choose from all {len(pathways)} affected pathways",
+            options=all_ids,
+            index=current_idx,
+            format_func=lambda pid: labels[pid],
+        )
+        st.session_state["selected_pathway"] = chosen
 
     selected = next((p for p in pathways if p["pathway_id"] == st.session_state["selected_pathway"]), pathways[0])
     with st.container(border=True):

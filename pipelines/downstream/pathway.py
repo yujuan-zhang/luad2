@@ -2,10 +2,19 @@
 
 Not a call to pathview/cytoscape -- this renders the pathway image itself,
 from a locally-cached KEGG PNG + pre-parsed gene-box coordinates
-(`kegg_cache/pathways/*_nodes.json`, extracted once from KEGG's KGML via
-the KEGG REST API and not re-fetched here). Gene-to-pathway membership
-comes from gseapy's KEGG_2021_Human gene sets, also resolved locally --
-no network calls at request time.
+(`kegg_cache/pathways/*_nodes.json`, extracted from KEGG's KGML via the
+KEGG REST API and not re-fetched here). Gene-to-pathway membership comes
+from gseapy's KEGG_2021_Human gene sets, also resolved locally -- no
+network calls at request time, in prod or locally.
+
+`LUAD_PATHWAYS` covers 79 pathways from five of KEGG's own BRITE
+categories (Signal transduction, Cancer: overview, Cancer: specific types,
+Cell growth and death, Immune system) -- an objective, KEGG-defined scope
+rather than a hand-picked list, so most driver/passenger genes in a real
+uploaded VCF land in a rendered pathway rather than falling outside an
+arbitrarily small set. Built (and re-buildable) by
+`scripts/build_kegg_cache.py`; the mapping itself is data, not code --
+loaded from `kegg_cache/pathway_index.json`.
 
 Overlay colors (semi-transparent boxes; a gene with more than one status
 gets its box split into vertical strips, one per status):
@@ -27,19 +36,14 @@ import gseapy as gp
 from PIL import Image, ImageDraw
 
 CACHE_DIR = Path(__file__).parent / "kegg_cache" / "pathways"
+_INDEX_PATH = Path(__file__).parent / "kegg_cache" / "pathway_index.json"
 
 EXPRESSED_TPM = 1.0
 HIGH_EXPR_TPM = 5.0
 
+# {display_name: (kegg_pathway_id, gseapy_KEGG_2021_Human_key)}
 LUAD_PATHWAYS = {
-    "MAPK Signaling": ("hsa04010", "MAPK signaling pathway"),
-    "PI3K-AKT": ("hsa04151", "PI3K-Akt signaling pathway"),
-    "ErbB / EGFR": ("hsa04012", "ErbB signaling pathway"),
-    "p53 Signaling": ("hsa04115", "p53 signaling pathway"),
-    "Cell Cycle": ("hsa04110", "Cell cycle"),
-    "TGF-β Signaling": ("hsa04350", "TGF-beta signaling pathway"),
-    "Wnt Signaling": ("hsa04310", "Wnt signaling pathway"),
-    "VEGF Signaling": ("hsa04370", "VEGF signaling pathway"),
+    name: tuple(v) for name, v in json.loads(_INDEX_PATH.read_text()).items()
 }
 
 NODE_COLORS = {
@@ -183,9 +187,8 @@ def build_gene_table(pathway_genes, variants, expressed_genes, high_expr_genes, 
 
 
 def analyze_pathways(variants, expression_df):
-    """For each of the 8 LUAD pathways with >=1 mutated gene, render an
-    annotated PNG + gene status table. Returns [] if none of the 8 have a
-    mutated gene."""
+    """For each of LUAD_PATHWAYS' pathways with >=1 mutated gene, render an
+    annotated PNG + gene status table. Returns [] if none were hit."""
     pathway_genes = load_all_pathway_genes()
     mutated = mutated_genes_from_variants(variants)
     expressed, high = expression_tiers(expression_df)

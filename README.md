@@ -47,12 +47,16 @@ HLA-presented                 69  (IC50 <= 500nM，真实 mhcflurry 预测)
 
 `pathway.py`（同一套设计思路来自 `luad_workflow/modules/06_pathway/kegg_viewer.py`）：自己在
 本地缓存的 KEGG 官方 PNG 上用 Pillow 叠色块，不调 pathview/cytoscape。通路成员基因用 gseapy 的
-KEGG_2021_Human gene set（本地缓存，不联网）；底图 + 基因框坐标是提前从 KEGG REST API/KGML 下载好
-缓存在 `pipelines/downstream/kegg_cache/pathways/` 的（这次是直接从 `luad_workflow` 拷贝过来的，
-没有重新下载）。
+KEGG_2021_Human gene set（本地缓存，不联网）；底图 + 基因框坐标是真的用 KEGG REST API/KGML 下载好
+缓存在 `pipelines/downstream/kegg_cache/pathways/` 的。
 
-固定检查 8 条 LUAD 核心通路（MAPK / PI3K-AKT / ErbB-EGFR / p53 / Cell Cycle / TGF-β / Wnt / VEGF），
-只渲染有命中突变基因的通路。颜色（跟 `luad_workflow` 版本不同，没有差异表达倍数，只看是否表达/高表达）：
+覆盖范围：最早只挑了8条手选的"LUAD核心通路"，范围太窄——真实上传的VCF里突变基因很容易落在这8条之外。
+现在改成 KEGG 自己的 BRITE 分类体系里 5 个跟肿瘤直接相关的官方类别（Signal transduction / Cancer:
+overview / Cancer: specific types / Cell growth and death / Immune system），一共 **79 条通路**
+（含 KEGG 自己的 Non-small cell lung cancer / Small cell lung cancer 通路图），不是随手挑的，是
+KEGG 官方的分类。构建脚本是 `scripts/build_kegg_cache.py`（可重新跑，联网只发生在这一步，构建产物
+79×(PNG + 坐标json) ≈ 9.4MB 全部提交进仓库，`pathway.py` 运行时只读本地文件，不联网）。只渲染实际
+命中突变基因的通路。颜色（跟 `luad_workflow` 版本不同，没有差异表达倍数，只看是否表达/高表达）：
 
 - 绿色 = 突变基因
 - 黄色 = 有表达（TPM ≥ 1）
