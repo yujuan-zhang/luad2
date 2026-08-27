@@ -562,11 +562,12 @@ about_col1, about_col2 = st.columns([3, 2])
 with about_col1:
     st.markdown(
         "<div class='luad-card' style='height:100%;'>"
-        "LUADtx is an end-to-end precision oncology platform for lung adenocarcinoma — from raw "
-        "sequencing reads to somatic variants, tumor expression, targeted-therapy evidence, "
-        "pathway context, and neoantigen prioritization. Raw-read processing (Nextflow/nf-core) "
-        "runs on local HPC to control AWS compute costs, in a hybrid HPC + AWS architecture. "
-        "Developed as a reproducible research and portfolio platform for precision oncology."
+        "LUADtx is an end-to-end precision oncology platform for lung adenocarcinoma, spanning raw "
+        "sequencing reads, somatic variant analysis, tumor expression, HLA typing, targeted-therapy "
+        "evidence, pathway interpretation, and neoantigen prioritization. Raw-read processing with "
+        "Nextflow/nf-core runs on local HPC to reduce AWS compute costs, while downstream analysis "
+        "and reporting are deployed on AWS in a hybrid HPC–cloud architecture. Developed as a "
+        "reproducible research and portfolio platform."
         "</div>",
         unsafe_allow_html=True,
     )
