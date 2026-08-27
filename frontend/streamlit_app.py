@@ -72,10 +72,20 @@ st.markdown(
         margin-top: 1.6rem;
     }
 
+    /* Break out of the sidebar-offset content column so these bars span
+       the full browser viewport (over the sidebar too), not just the
+       main content pane -- 100vw/50vw are relative to the true viewport
+       regardless of the sidebar's presence, unlike percentage widths. */
+    .luad-navbar, .luad-footer {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+    }
+
     .luad-navbar {
         background: #1E3A8A;
-        border-radius: 12px;
-        padding: 0.9rem 1.4rem;
+        padding: 0.9rem 2rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -90,9 +100,8 @@ st.markdown(
 
     .luad-footer {
         background: #1E3A8A;
-        border-radius: 12px 12px 0 0;
         margin-top: 2.5rem;
-        padding: 1.2rem 1.4rem;
+        padding: 1.2rem 2rem;
         color: #BFDBFE;
         font-size: 0.85rem;
         line-height: 1.7;
