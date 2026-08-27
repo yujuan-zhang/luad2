@@ -554,6 +554,7 @@ st.markdown("<div id='about'></div>", unsafe_allow_html=True)
 st.subheader("About")
 _ABOUT_STACK = [
     ("Workflow", ["Nextflow", "nf-core"]),
+    ("Annotation", ["Ensembl VEP"]),
     ("Evidence", ["CIViC", "KEGG"]),
     ("Prediction", ["UniProt", "pVACtools", "MHCflurry"]),
     ("Deployment", ["FastAPI", "Streamlit", "Docker", "AWS"]),

@@ -1,43 +1,51 @@
-"""Somatic variant annotation.
+"""Somatic variant annotation via the real Ensembl VEP REST API.
 
-MOCK mechanism, real content: annotates a somatic VCF by looking up each
-(chrom, pos, ref, alt) in `_ANNOTATION_TABLE`, which holds the real VEP
-annotation results for TCGA-38-4627 (from `luad_workflow`'s real pipeline)
--- gene, consequence, HGVSp, DNA VAF, hotspot flag, functional impact.
+Free, no token, GRCh38 (matches this project's coordinates). Variants are
+converted from VCF notation to Ensembl's region/allele format and POSTed in
+batches (the API accepts up to `_BATCH_SIZE` per call) to
+`/vep/human/region`, with `canonical=1` so annotation is pinned to each
+gene's canonical transcript. `gene`, `consequence` and `impact` come
+straight from the response; `protein_change` is built from `amino_acids` +
+`protein_start` (e.g. "L/R" at 858 -> "p.L858R") rather than requesting
+HGVS strings, since Ensembl's `hgvs=1` option 500-errors on this endpoint
+as of 2026-08.
 
-Matches the intended architecture: users upload a VCF, and (once wired
-up) an AWS-hosted VEP API annotates it. `annotate_variants`'s interface
-won't change when the lookup table is replaced with that real call.
+`functional_impact` is VEP's own IMPACT tier (HIGH/MODERATE/LOW/MODIFIER)
+-- not the PCGR/cancer-specific tiering an earlier mock version of this
+module used, which isn't a real VEP output. `hotspot` is *not* derived from
+the API response: COSMIC co-location (`colocated_variants[].somatic`) flags
+almost any observed somatic variant, not just recurrent drivers, so it's
+checked against `_KNOWN_LUAD_HOTSPOTS`, a small curated list of
+well-established LUAD driver hotspots -- same pattern as `civic.DRUG_KB`.
+
+DNA VAF isn't a VEP concept at all (VEP annotates genomic consequence, not
+genotype/frequency); it's read directly from the input VCF's own `VAF=` INFO
+field, which is where a real variant caller would put it.
+
+No annotation is fabricated: a variant with no INFO/VAF gets `dna_vaf=None`,
+and a failed API call raises rather than silently returning empty/wrong
+annotations.
 """
 import gzip
 
-_ANNOTATION_TABLE = {
-    ("chr1", 207899997, "C", "T"): {"gene": "CD34", "consequence": "missense_variant", "protein_change": "p.G29E", "dna_vaf": 0.1429, "hotspot": False, "functional_impact": "VUS"},
-    ("chr2", 189877340, "C", "G"): {"gene": "PMS1", "consequence": "missense_variant", "protein_change": "p.I901M", "dna_vaf": 0.0889, "hotspot": False, "functional_impact": "VUS"},
-    ("chr3", 141577093, "G", "A"): {"gene": "RASA2", "consequence": "missense_variant", "protein_change": "p.R526Q", "dna_vaf": 0.1102, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr3", 143832090, "C", "A"): {"gene": "SLC9A9", "consequence": "stop_gained", "protein_change": "p.E103*", "dna_vaf": 0.1, "hotspot": False, "functional_impact": "Likely_Functional"},
-    ("chr5", 138192270, "G", "A"): {"gene": "CDC23", "consequence": "stop_gained;splice_region_variant", "protein_change": "p.R429*", "dna_vaf": 0.1471, "hotspot": False, "functional_impact": "Likely_Functional"},
-    ("chr5", 141854106, "G", "A"): {"gene": "PCDH1", "consequence": "missense_variant", "protein_change": "p.S1217L", "dna_vaf": 0.25, "hotspot": False, "functional_impact": "VUS"},
-    ("chr6", 20758610, "C", "T"): {"gene": "CDKAL1", "consequence": "missense_variant", "protein_change": "p.R162C", "dna_vaf": 0.1111, "hotspot": False, "functional_impact": "VUS"},
-    ("chr6", 25813195, "A", "G"): {"gene": "SLC17A1", "consequence": "missense_variant", "protein_change": "p.V212A", "dna_vaf": 0.1167, "hotspot": False, "functional_impact": "VUS"},
-    ("chr6", 33412776, "G", "A"): {"gene": "PHF1", "consequence": "missense_variant", "protein_change": "p.C107Y", "dna_vaf": 0.0667, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr7", 12230396, "A", "G"): {"gene": "TMEM106B", "consequence": "missense_variant", "protein_change": "p.Y197C", "dna_vaf": 0.053, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr7", 55142382, "T", "G"): {"gene": "EGFR", "consequence": "missense_variant", "protein_change": "p.L62R", "dna_vaf": 0.15, "hotspot": True, "functional_impact": "VUS"},
-    ("chr7", 55191822, "T", "G"): {"gene": "EGFR", "consequence": "missense_variant", "protein_change": "p.L858R", "dna_vaf": 0.1343, "hotspot": True, "functional_impact": "Possibly_Functional"},
-    ("chr7", 149103739, "G", "A"): {"gene": "ZNF425", "consequence": "missense_variant", "protein_change": "p.A711V", "dna_vaf": 0.186, "hotspot": False, "functional_impact": "VUS"},
-    ("chr8", 87873503, "C", "T"): {"gene": "DCAF4L2", "consequence": "missense_variant", "protein_change": "p.V157M", "dna_vaf": 0.0645, "hotspot": False, "functional_impact": "VUS"},
-    ("chr12", 85283653, "G", "A"): {"gene": "ALX1", "consequence": "missense_variant", "protein_change": "p.R103Q", "dna_vaf": 0.12, "hotspot": False, "functional_impact": "VUS"},
-    ("chr13", 69740501, "G", "T"): {"gene": "KLHL1", "consequence": "missense_variant", "protein_change": "p.S565R", "dna_vaf": 0.08, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr14", 20117962, "C", "T"): {"gene": "OR4K17", "consequence": "missense_variant", "protein_change": "p.H155Y", "dna_vaf": 0.1067, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr16", 53292902, "G", "A"): {"gene": "CHD9", "consequence": "missense_variant", "protein_change": "p.R1787H", "dna_vaf": 0.1484, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr17", 3734821, "T", "A"): {"gene": "ITGAE", "consequence": "missense_variant", "protein_change": "p.Q884L", "dna_vaf": 0.098, "hotspot": False, "functional_impact": "VUS"},
-    ("chr17", 7513369, "C", "T"): {"gene": "POLR2A", "consequence": "missense_variant", "protein_change": "p.T1702I", "dna_vaf": 0.1786, "hotspot": False, "functional_impact": "VUS"},
-    ("chr17", 10639422, "A", "-"): {"gene": "MYH3", "consequence": "frameshift_variant", "protein_change": "p.L993*", "dna_vaf": 0.1064, "hotspot": False, "functional_impact": "Likely_Functional"},
-    ("chr17", 60947218, "G", "T"): {"gene": "BCAS3", "consequence": "splice_acceptor_variant", "protein_change": "p.X363_splice", "dna_vaf": 0.0903, "hotspot": False, "functional_impact": "Likely_Functional"},
-    ("chr22", 19410772, "G", "A"): {"gene": "HIRA", "consequence": "missense_variant", "protein_change": "p.P15L", "dna_vaf": 0.1051, "hotspot": False, "functional_impact": "Possibly_Functional"},
-    ("chr22", 32437824, "A", "T"): {"gene": "BPIFC", "consequence": "missense_variant", "protein_change": "p.L228Q", "dna_vaf": 0.0957, "hotspot": False, "functional_impact": "VUS"},
-    ("chrX", 31478264, "T", "A"): {"gene": "DMD", "consequence": "stop_gained", "protein_change": "p.R2927*", "dna_vaf": 0.0704, "hotspot": False, "functional_impact": "Likely_Functional"},
+import requests
+
+ENSEMBL_VEP_URL = "https://rest.ensembl.org/vep/human/region"
+_BATCH_SIZE = 200
+
+# Well-established LUAD driver hotspots (gene -> set of HGVSp short forms).
+# Deliberately small and conservative -- textbook driver mutations only, not
+# a full cancerhotspots.org-style statistical hotspot table.
+_KNOWN_LUAD_HOTSPOTS = {
+    "EGFR": {"p.L858R", "p.T790M", "p.G719A", "p.G719S", "p.G719C", "p.L861Q", "p.S768I"},
+    "KRAS": {"p.G12C", "p.G12D", "p.G12V", "p.G12A", "p.G12S", "p.G13D", "p.Q61H", "p.Q61K", "p.Q61L"},
+    "BRAF": {"p.V600E"},
+    "ERBB2": {"p.L755S"},
 }
+
+
+def _is_hotspot(gene, protein_change):
+    return protein_change in _KNOWN_LUAD_HOTSPOTS.get(gene, set())
 
 
 def _open(vcf_path):
@@ -45,18 +53,120 @@ def _open(vcf_path):
     return gzip.open(vcf_path, "rt") if vcf_path.endswith(".gz") else open(vcf_path)
 
 
-def annotate_variants(vcf_path):
-    variants = []
+def _parse_info_vaf(info):
+    for field in info.split(";"):
+        if field.startswith("VAF="):
+            try:
+                return float(field[len("VAF="):])
+            except ValueError:
+                return None
+    return None
+
+
+def _read_vcf(vcf_path):
+    """[(chrom, pos, ref, alt, dna_vaf), ...] in file order."""
+    records = []
     with _open(vcf_path) as f:
         for line in f:
             if line.startswith("#"):
                 continue
-            chrom, pos, _id, ref, alt, *_ = line.rstrip("\n").split("\t")
-            key = (chrom, int(pos), ref, alt)
-            anno = _ANNOTATION_TABLE.get(key, {
-                "gene": "NA", "consequence": "unknown",
-                "protein_change": "NA", "dna_vaf": None,
-                "hotspot": False, "functional_impact": "",
+            chrom, pos, _id, ref, alt, _qual, _filt, info, *_ = line.rstrip("\n").split("\t")
+            records.append((chrom, int(pos), ref, alt, _parse_info_vaf(info)))
+    return records
+
+
+def _vcf_to_region(chrom, pos, ref, alt):
+    """VCF (chrom, 1-based pos, ref, alt) -> Ensembl region-endpoint
+    (chrom, start, end, "ref/alt") triple. Handles plain SNVs, this
+    project's MAF-style unanchored indels ("-" for the missing allele),
+    and standard VCF-anchored indels (shared-prefix trimming)."""
+    ref = "" if ref == "-" else ref
+    alt = "" if alt == "-" else alt
+    chrom = chrom.replace("chr", "")
+
+    if len(ref) == 1 and len(alt) == 1 and ref and alt:
+        return chrom, pos, pos, f"{ref}/{alt}"
+    if ref == "":
+        return chrom, pos, pos - 1, f"-/{alt}"
+    if alt == "":
+        return chrom, pos, pos + len(ref) - 1, f"{ref}/-"
+
+    i = 0
+    while i < len(ref) and i < len(alt) and ref[i] == alt[i]:
+        i += 1
+    trimmed_ref, trimmed_alt = ref[i:], alt[i:]
+    start = pos + i
+    if trimmed_ref == "":
+        return chrom, start, start - 1, f"-/{trimmed_alt}"
+    if trimmed_alt == "":
+        return chrom, start, start + len(trimmed_ref) - 1, f"{trimmed_ref}/-"
+    return chrom, start, start + len(trimmed_ref) - 1, f"{trimmed_ref}/{trimmed_alt}"
+
+
+def _query_vep(region_strings, timeout=60):
+    """One batched POST to the Ensembl VEP REST API. Raises on failure --
+    annotation is core pipeline output, not a best-effort enrichment, so a
+    broken call should surface loudly rather than annotate silently wrong."""
+    resp = requests.post(
+        ENSEMBL_VEP_URL,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        json={"variants": region_strings, "canonical": 1},
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    results = resp.json()
+    if len(results) != len(region_strings):
+        raise RuntimeError(
+            f"Ensembl VEP returned {len(results)} results for {len(region_strings)} "
+            "variants -- can't safely match annotations back to input order."
+        )
+    return results
+
+
+def _pick_transcript(vep_result):
+    consequences = vep_result.get("transcript_consequences", [])
+    canonical = [t for t in consequences if t.get("canonical") == 1]
+    return (canonical or consequences or [{}])[0]
+
+
+def _protein_change(transcript):
+    amino_acids = transcript.get("amino_acids")
+    pos = transcript.get("protein_start")
+    if not amino_acids or "/" not in amino_acids or not pos:
+        return "NA"
+    wt, mut = amino_acids.split("/")
+    return f"p.{wt}{pos}{mut}"
+
+
+def annotate_variants(vcf_path):
+    records = _read_vcf(vcf_path)
+    if not records:
+        return []
+
+    variants = []
+    for batch_start in range(0, len(records), _BATCH_SIZE):
+        batch = records[batch_start:batch_start + _BATCH_SIZE]
+        region_strings = [
+            "{} {} {} {} 1".format(*_vcf_to_region(chrom, pos, ref, alt))
+            for chrom, pos, ref, alt, _vaf in batch
+        ]
+        results = _query_vep(region_strings)
+
+        for (chrom, pos, ref, alt, dna_vaf), vep_result in zip(batch, results):
+            transcript = _pick_transcript(vep_result)
+            gene = transcript.get("gene_symbol", "NA")
+            consequence = ";".join(
+                transcript.get("consequence_terms")
+                or [vep_result.get("most_severe_consequence", "unknown")]
+            )
+            protein_change = _protein_change(transcript)
+            variants.append({
+                "chrom": chrom, "pos": pos, "ref": ref, "alt": alt,
+                "gene": gene,
+                "consequence": consequence,
+                "protein_change": protein_change,
+                "dna_vaf": dna_vaf,
+                "hotspot": _is_hotspot(gene, protein_change),
+                "functional_impact": transcript.get("impact", ""),
             })
-            variants.append({"chrom": chrom, "pos": int(pos), "ref": ref, "alt": alt, **anno})
     return variants

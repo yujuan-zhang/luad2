@@ -2,18 +2,23 @@
 
 LUAD neoantigen / targeted-therapy prioritization pipeline. See project plan for full architecture.
 
-## 当前阶段：Phase 3 — 全链路真实（除了 VEP 本身还没接 AWS API）
+## 当前阶段：Phase 3 — 全链路真实
 
 默认 demo 病例是 **TCGA-38-4627**（来自 `luad_workflow` 项目已经跑过的真实结果）：
 
-- `data/demo/variants.vcf.gz`：真实的 25 个 protein-altering somatic variants，未注释的原始 VCF —— 符合项目设计（用户上传 VCF，AWS VEP API 负责注释）
+- `data/demo/variants.vcf.gz`：真实的 25 个 protein-altering somatic variants，未注释的原始 VCF，INFO 里带真实
+  DNA VAF —— 符合项目设计（用户上传 VCF，VEP API 负责注释）
 - `data/demo/expression.tsv.gz`：真实的全基因组 tumor expression（TPM + GTEx-lung z-score/percentile）
 - `data/demo/hla.tsv`：**synthetic HLA**（这个病例没有真实 HLA typing，按项目计划明确标注为 synthetic）
 
-`vep.py` 还不是真的调 VEP API（AWS 那一步还没搭），而是内部查表注释 —— 但表里的内容是真实的 VEP 注释结果
-（来自 `luad_workflow`，gene/consequence/HGVSp/DNA VAF/hotspot/functional impact 都是真的），只是注释这个
-*动作* 现在是本地查表完成，接口（`annotate_variants(vcf_path)`）跟真的调 VEP API 完全一样，以后接上真实
-VEP API 时只需要换内部实现。
+`vep.py` 现在真的调 Ensembl VEP REST API（`rest.ensembl.org/vep/human/region`，免费不需要 token，GRCh38）
+做注释，`canonical=1` 锁定 canonical transcript，`gene`/`consequence`/`functional_impact`（VEP 原生的
+HIGH/MODERATE/LOW/MODIFIER 分级）都是接口直接返回的；`protein_change` 是从返回的 `amino_acids` +
+`protein_start` 自己拼的（没用 `hgvs=1` 参数——这个参数在这个接口上会 500）。DNA VAF 不是 VEP 的概念，
+是从输入 VCF 自己的 `INFO/VAF` 字段读出来的（跟真实变异检测流程一样，caller 出 VAF，VEP 只管注释）。
+`hotspot` 也不是接口直接给的——COSMIC 共定位（`colocated_variants[].somatic`）几乎所有体细胞变异都命中，
+不能当热点信号，所以换成一个小的、保守的 curated 真实 LUAD driver hotspot 表（`_KNOWN_LUAD_HOTSPOTS`），
+跟 `civic.DRUG_KB` 是同一个套路。API 调用失败会直接抛错，不会静默退化成假注释。
 `civic.py` 是真实实现：curated 药物知识库 + CIViC（civicdb.org）GraphQL API 实时查询，不需要 OncoKB token。
 
 `pvactools.py` 现在也是真实实现了：
@@ -34,8 +39,8 @@ Protein-altering variants    25
 Actionable variants           1   -> 进 drug_matches 分支
 Neoantigen candidates        24   -> 进 pvactools 分支
 Expressed variants           17   (TPM >= 1)
-Real peptide generated        ~14  (missense only, 真实蛋白序列取到 + 位点对得上)
-HLA-presented                ~69  (IC50 <= 500nM，真实 mhcflurry 预测)
+Real peptide generated        12  (missense only, 真实蛋白序列取到 + 位点对得上)
+HLA-presented                 69  (IC50 <= 500nM，真实 mhcflurry 预测)
 ```
 
 ## Pathway 可视化
