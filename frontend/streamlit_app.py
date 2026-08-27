@@ -335,7 +335,7 @@ st.markdown(
     """
     <div class="luad-footer">
       Yujuan Zhang, PhD | Professor<br>
-      <a href="https://github.com/yujuan-zhang" target="_blank">GitHub</a> · <a href="#home">Homepage</a> · <a href="https://github.com/yujuan-zhang/luad2" target="_blank">⭐ Star this project</a><br>
+      <a href="https://github.com/yujuan-zhang" target="_blank">GitHub</a> · <a href="https://github.com/yujuan-zhang/luad2" target="_blank">⭐ Star this project</a><br>
       © 2026 Yujuan Zhang. All rights reserved.
     </div>
     """,
