@@ -375,10 +375,11 @@ st.markdown("<div id='about'></div>", unsafe_allow_html=True)
 st.subheader("About")
 st.markdown(
     "<div class='luad-card'>"
-    "LUADtx integrates real somatic-variant annotation, real drug-evidence matching "
-    "(<a href='https://civicdb.org' target='_blank'>CIViC</a>), real KEGG pathway context, "
-    "and real neoantigen prediction (UniProt sequences + pVACtools/MHCflurry binding) into "
-    "one LUAD precision-oncology pipeline. It's a research and portfolio demo, not a clinical tool."
+    "LUADtx is an end-to-end precision oncology platform for lung adenocarcinoma, integrating "
+    "somatic variant analysis, tumor expression, HLA typing, targeted-therapy evidence, pathway "
+    "interpretation, and neoantigen prioritization. The platform combines Nextflow/nf-core, "
+    "<a href='https://civicdb.org' target='_blank'>CIViC</a>, KEGG, UniProt, pVACtools/MHCflurry, "
+    "FastAPI, Streamlit, Docker, and AWS into a reproducible research workflow."
     "</div>",
     unsafe_allow_html=True,
 )
