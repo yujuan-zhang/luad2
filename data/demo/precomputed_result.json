@@ -3,9 +3,9 @@
     "Variants": 25,
     "Neoantigen Candidates": 24,
     "Expressed": 17,
-    "Peptides": 12,
-    "Peptide-HLA Pairs": 2736,
-    "Presented": 69
+    "Variant-derived Peptides": 12,
+    "Peptide-HLA Evaluations": 2736,
+    "Presented Candidates": 69
   },
   "variants": [
     {

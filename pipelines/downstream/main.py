@@ -45,9 +45,9 @@ def run_pipeline(vcf_path, expression_path, hla_path):
         "Variants": len(protein_altering),
         "Neoantigen Candidates": len(neoantigen_candidates),
         "Expressed": len(expressed),
-        "Peptides": len(with_peptide),
-        "Peptide-HLA Pairs": peptide_hla_pairs,
-        "Presented": len(neoantigens),
+        "Variant-derived Peptides": len(with_peptide),
+        "Peptide-HLA Evaluations": peptide_hla_pairs,
+        "Presented Candidates": len(neoantigens),
     }
 
     return {

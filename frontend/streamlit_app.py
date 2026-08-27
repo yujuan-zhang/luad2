@@ -46,6 +46,57 @@ def _ic50_badge(ic50):
     return "luad-badge--muted", "Weak binder"
 
 
+def _level_badge_class(level):
+    if level == "FDA-Approved":
+        return "luad-badge--fda"
+    if level in ("A", "B"):
+        return "luad-badge--info"
+    return "luad-badge--muted"
+
+
+def _response_label(significance):
+    sig = (significance or "").upper()
+    if "SENSITIVITY" in sig or "RESPONSE" in sig:
+        return "Sensitive", "luad-badge--fda"
+    if "RESISTANCE" in sig:
+        return "Resistant", "luad-badge--danger"
+    return (significance.title() if significance else "—"), "luad-badge--muted"
+
+
+def _drug_table_html(matches):
+    """Small evidence table rendered as plain HTML (with real badges) instead
+    of st.dataframe -- a native Streamlit grid can't put a colored pill in a
+    cell, and the raw SENSITIVITYRESPONSE/drug_class strings read as
+    database internals rather than a clinical summary."""
+    rows = []
+    for m in matches:
+        level = m.get("level") or "—"
+        line = m.get("line") or "—"
+        resp_label, resp_class = _response_label(m.get("significance"))
+        rows.append(
+            "<tr style='border-bottom:1px solid #F1F5F9;'>"
+            f"<td style='padding:0.5rem 0.7rem;'>{html.escape(m['gene'])}</td>"
+            f"<td style='padding:0.5rem 0.7rem;'>{html.escape(m['protein_change'])}</td>"
+            f"<td style='padding:0.5rem 0.7rem; font-weight:600;'>{html.escape(m['drug'])}</td>"
+            f"<td style='padding:0.5rem 0.7rem;'><span class='luad-badge {_level_badge_class(level)}'>{html.escape(level)}</span></td>"
+            f"<td style='padding:0.5rem 0.7rem; opacity:0.75;'>{html.escape(line)}</td>"
+            f"<td style='padding:0.5rem 0.7rem;'><span class='luad-badge {resp_class}'>{resp_label}</span></td>"
+            "</tr>"
+        )
+    header = (
+        "<tr style='border-bottom:1px solid #E5E7EB; text-align:left; opacity:0.55; font-size:0.78rem;'>"
+        "<th style='padding:0.4rem 0.7rem;'>Gene</th><th style='padding:0.4rem 0.7rem;'>Mutation</th>"
+        "<th style='padding:0.4rem 0.7rem;'>Drug</th><th style='padding:0.4rem 0.7rem;'>Level</th>"
+        "<th style='padding:0.4rem 0.7rem;'>Line</th><th style='padding:0.4rem 0.7rem;'>Response</th></tr>"
+    )
+    return (
+        "<div class='luad-card' style='padding:0.4rem 0.2rem;'>"
+        "<table style='width:100%; border-collapse:collapse; font-size:0.85rem;'>"
+        f"<thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
+        "</div>"
+    )
+
+
 st.set_page_config(page_title="LUADtx", layout="wide")
 
 st.markdown(
@@ -54,7 +105,7 @@ st.markdown(
     .stApp { background-color: #F8FAFC; }
     /* Room for the fixed navbar/footer bars (see below) so page content
        and the sidebar's own content never sit underneath them. */
-    .main .block-container { padding-top: 4.5rem; padding-bottom: 8rem; }
+    .main .block-container { padding-top: 4.5rem; padding-bottom: 5rem; }
     [data-testid="stSidebar"] {
         min-width: 230px; max-width: 230px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
@@ -70,9 +121,9 @@ st.markdown(
     .stApp h1 { color: #1E3A8A; }
     .stApp h2, .stApp h3 {
         color: #1E3A8A;
-        border-left: 4px solid #2563EB;
-        padding-left: 0.7rem;
-        margin-top: 1.6rem;
+        border-left: 3px solid #2563EB;
+        padding-left: 0.8rem;
+        margin-top: 1.8rem;
     }
 
     /* Fixed to the actual viewport edges -- unlike percentage/vw-based
@@ -97,20 +148,26 @@ st.markdown(
         flex-wrap: wrap;
         gap: 0.6rem;
     }
-    .luad-navbar a { color: #BFDBFE; text-decoration: none; font-size: 0.88rem; }
-    .luad-navbar a:hover { color: #FFFFFF; }
     .luad-navbar .luad-brand { color: #FFFFFF; font-weight: 800; font-size: 1.1rem; }
-    .luad-navbar .luad-brand-sub { color: #BFDBFE; font-weight: 400; font-size: 0.92rem; margin-left: 0.5rem; }
+    .luad-navbar .luad-brand-divider { color: rgba(255,255,255,0.35); margin: 0 0.65rem; font-weight: 300; }
+    .luad-navbar .luad-brand-sub { color: #93C5FD; font-weight: 400; font-size: 0.86rem; }
+    .luad-navbar nav a {
+        color: #BFDBFE; text-decoration: none; font-size: 0.86rem;
+        padding: 0.3rem 0.7rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
+    }
+    .luad-navbar nav a:hover { color: #FFFFFF; background: rgba(255,255,255,0.12); }
+    .luad-navbar nav a.luad-nav-external { color: #93C5FD; }
 
     .luad-footer {
         bottom: 0;
-        background: #1E3A8A;
-        padding: 0.9rem 2rem;
-        color: #BFDBFE;
-        font-size: 0.85rem;
-        line-height: 1.5;
+        background: #FFFFFF;
+        border-top: 1px solid #E2E8F0;
+        padding: 0.55rem 2rem;
+        color: #64748B;
+        font-size: 0.78rem;
+        line-height: 1.4;
     }
-    .luad-footer a { color: #FFFFFF; text-decoration: none; font-weight: 600; }
+    .luad-footer a { color: #2563EB; text-decoration: none; font-weight: 600; }
     .luad-footer a:hover { text-decoration: underline; }
 
     /* So the nav links' anchor-jump doesn't land the target section
@@ -139,14 +196,16 @@ st.markdown(
     [data-testid="stFileUploader"] {
         border: 1px solid #E5E7EB;
         border-radius: 10px;
-        padding: 0.6rem 0.7rem;
+        padding: 0.5rem 0.6rem;
         background: #F8FAFC;
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.5rem;
     }
+    [data-testid="stFileUploader"] label p { font-size: 0.85rem; font-weight: 600; }
     [data-testid="stFileUploaderDropzone"] {
         background: #FFFFFF !important;
         border: 1px dashed #CBD5E1 !important;
         border-radius: 8px !important;
+        min-height: 2.6rem !important;
     }
 
     .luad-card {
@@ -166,10 +225,12 @@ st.markdown(
         display: inline-block; padding: 0.16rem 0.6rem; border-radius: 999px;
         font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
     }
-    .luad-badge--fda { background: #DBEAFE; color: #1D4ED8; }
+    .luad-badge--fda { background: #DCFCE7; color: #15803D; }
     .luad-badge--strong { background: #CCFBF1; color: #0F766E; }
     .luad-badge--info { background: #DBEAFE; color: #2563EB; }
     .luad-badge--muted { background: #F1F5F9; color: #475569; }
+    .luad-badge--warning { background: #FEF3C7; color: #B45309; }
+    .luad-badge--danger { background: #FEE2E2; color: #B91C1C; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -178,14 +239,14 @@ st.markdown(
 st.markdown(
     """
     <div class="luad-navbar">
-      <div><span class="luad-brand">LUADtx</span><span class="luad-brand-sub">| End-to-End Personalized Therapy Prioritization</span></div>
-      <div>
-        <a href="#home">Home</a> &nbsp;·&nbsp;
-        <a href="#analysis">Analysis</a> &nbsp;·&nbsp;
-        <a href="#results">Results</a> &nbsp;·&nbsp;
-        <a href="#about">About</a> &nbsp;·&nbsp;
-        <a href="https://github.com/yujuan-zhang/luad2" target="_blank">GitHub</a>
-      </div>
+      <div><span class="luad-brand">LUADtx</span><span class="luad-brand-divider">|</span><span class="luad-brand-sub">End-to-End Personalized Therapy Prioritization</span></div>
+      <nav>
+        <a href="#home">Home</a>
+        <a href="#analysis">Analysis</a>
+        <a href="#results">Results</a>
+        <a href="#about">About</a>
+        <a class="luad-nav-external" href="https://github.com/yujuan-zhang/luad2" target="_blank">GitHub ↗</a>
+      </nav>
     </div>
     """,
     unsafe_allow_html=True,
@@ -196,9 +257,13 @@ st.markdown("### Patient / Case")
 st.markdown(
     """
     <div class="luad-card luad-card--blue">
-      <b>TCGA-38-4627</b> &nbsp;·&nbsp; Lung Adenocarcinoma (LUAD)
-      <div style="opacity:0.7; font-size:0.88rem; margin-top:0.3rem;">
-        Real somatic variants + real tumor expression &nbsp;·&nbsp; Synthetic HLA typing
+      <span class="luad-badge luad-badge--info">TCGA-38-4627</span>
+      <span class="luad-badge luad-badge--info">LUAD</span>
+      <span class="luad-badge luad-badge--muted">Demo Case</span>
+      <div style="margin-top:0.6rem; font-size:0.85rem;">
+        <span style="color:#15803D;">✓ Somatic variants</span>&nbsp;&nbsp;
+        <span style="color:#15803D;">✓ Tumor RNA</span>&nbsp;&nbsp;
+        <span class="luad-badge luad-badge--warning">HLA Synthetic</span>
       </div>
     </div>
     """,
@@ -211,13 +276,14 @@ def load_precomputed_demo():
     return json.loads(PRECOMPUTED_PATH.read_text())
 
 
-st.sidebar.header("Upload data (leave blank to use the built-in TCGA-38-4627 case)")
-vcf_file = st.sidebar.file_uploader("Somatic VCF (variants.vcf.gz)", type=["gz", "vcf"])
-expression_file = st.sidebar.file_uploader("Tumor expression (expression.tsv.gz)", type=["gz", "tsv"])
-hla_file = st.sidebar.file_uploader("HLA typing (hla.tsv)", type=["tsv"])
+st.sidebar.markdown("#### Input Data")
+st.sidebar.caption("Leave blank to use the built-in TCGA-38-4627 case.")
+vcf_file = st.sidebar.file_uploader("① Somatic VCF", type=["gz", "vcf"])
+expression_file = st.sidebar.file_uploader("② Tumor Expression", type=["gz", "tsv"])
+hla_file = st.sidebar.file_uploader("③ HLA Typing", type=["tsv"])
 has_upload = bool(vcf_file or expression_file or hla_file)
 
-if st.sidebar.button("Run analysis", type="primary"):
+if st.sidebar.button("Run Analysis →", type="primary"):
     if not has_upload:
         # Demo case's answer doesn't change between runs -- load the
         # precomputed result instead of re-running the ~1 minute real MHC
@@ -259,17 +325,20 @@ for i, (label, value) in enumerate(stages):
     flow_html += (
         "<div style='flex:1; text-align:center;'>"
         f"<div style='font-size:0.8rem; opacity:0.65; line-height:1.25; min-height:2.1em;'>{html.escape(label)}</div>"
-        f"<div style='font-size:1.9rem; font-weight:700; line-height:1.1; color:#2563EB;'>{value}</div>"
+        f"<div style='font-size:1.9rem; font-weight:700; line-height:1.1; color:#2563EB;'>{value:,}</div>"
         "</div>"
     )
     if i < n - 1:
         flow_html += "<div style='font-size:1.6rem; padding-top:2.1rem; color:#93C5FD;'>→</div>"
 flow_html += "</div>"
 st.markdown(flow_html, unsafe_allow_html=True)
-st.caption(
-    "Expressed: TPM ≥ 1  ·  Peptides: real UniProt sequence + missense substitution  ·  "
-    "Peptide-HLA Pairs: candidate 8-11mer windows × HLA alleles evaluated  ·  Presented: IC50 ≤ 500nM"
-)
+with st.expander("ⓘ Filtering criteria"):
+    st.markdown(
+        "- **Expressed:** TPM ≥ 1\n"
+        "- **Variant-derived Peptides:** real UniProt sequence + missense substitution\n"
+        "- **Peptide-HLA Evaluations:** candidate 8-11mer windows × HLA alleles evaluated\n"
+        "- **Presented Candidates:** IC50 ≤ 500nM"
+    )
 
 # ── Key Clinical Finding ──────────────────────────────────────────────────────
 st.markdown("<div id='results'></div>", unsafe_allow_html=True)
@@ -286,29 +355,37 @@ else:
         other = group[~group["drug"].apply(_is_targeted_drug)]
 
         targeted_drugs = list(dict.fromkeys(targeted["drug"]))  # unique, evidence-ranked order
-        top_drugs = targeted_drugs[:3]
+        preferred, alternatives = (targeted_drugs[0], targeted_drugs[1:3]) if targeted_drugs else (None, [])
         more_drugs = targeted_drugs[3:]
         top_level = targeted["level"].iloc[0] if not targeted.empty else group["level"].iloc[0]
-        badge_class = "luad-badge--fda" if top_level == "FDA-Approved" else "luad-badge--info"
+        badge_class = _level_badge_class(top_level)
 
+        alt_html = (
+            f"<div style='margin-top:0.6rem; font-size:0.85rem; opacity:0.75;'>"
+            f"<b>Alternative evidence</b> &nbsp; {html.escape(' · '.join(alternatives))}</div>"
+            if alternatives else ""
+        )
         st.markdown(
             "<div class='luad-card luad-card--blue'>"
-            f"<div style='font-size:1.05rem; font-weight:700; margin-bottom:0.4rem;'>"
-            f"{html.escape(gene)} {html.escape(change)} — Actionable Driver</div>"
+            f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
+            f"<div style='font-size:1.1rem; font-weight:700;'>{html.escape(gene)} {html.escape(change)}</div>"
             f"<span class='luad-badge {badge_class}'>{html.escape(top_level)}</span>"
-            f"<div style='margin-top:0.5rem;'><b>Recommended targeted therapies:</b> "
-            f"{html.escape(' / '.join(top_drugs)) if top_drugs else '—'}</div>"
+            "</div>"
+            "<div style='font-size:0.8rem; opacity:0.6; margin-top:0.1rem;'>Actionable Driver</div>"
+            "<div style='margin-top:0.7rem; font-size:0.78rem; opacity:0.6; text-transform:uppercase; letter-spacing:0.03em;'>Preferred therapy</div>"
+            f"<div style='font-size:1.3rem; font-weight:700; color:#1E3A8A;'>{html.escape(preferred) if preferred else '—'}</div>"
+            f"{alt_html}"
             "</div>",
             unsafe_allow_html=True,
         )
 
-        with st.expander("View all evidence"):
+        with st.expander("View all evidence →"):
             if more_drugs:
                 st.markdown(f"**Additional targeted-therapy evidence:** {', '.join(more_drugs)}")
             if not other.empty:
                 other_drugs = list(dict.fromkeys(other["drug"]))
                 st.markdown(f"**Other systemic therapy evidence (not targeted):** {', '.join(other_drugs)}")
-            st.dataframe(group.drop(columns=["_rank"]), use_container_width=True, hide_index=True)
+            st.markdown(_drug_table_html(group.drop(columns=["_rank"]).to_dict("records")), unsafe_allow_html=True)
 
 # ── Tabs: the two main analysis branches ─────────────────────────────────────
 tab_therapy, tab_neo = st.tabs(["Targeted Therapy", "Neoantigen / INT"])
@@ -317,7 +394,7 @@ with tab_therapy:
     if not drug_matches:
         st.info("No targeted drug matches found.")
     else:
-        st.dataframe(pd.DataFrame(drug_matches), use_container_width=True, hide_index=True)
+        st.markdown(_drug_table_html(drug_matches), unsafe_allow_html=True)
 
 with tab_neo:
     neoantigens = result["neoantigens"]
@@ -352,13 +429,26 @@ with tab_neo:
         st.markdown(f"##### Full Ranking ({len(neoantigens)})")
         st.dataframe(pd.DataFrame(neoantigens), use_container_width=True, hide_index=True)
 
-# ── Pathways: collapsed by default, expand for the KEGG diagram ─────────────
-st.subheader("Pathways")
+# ── Pathways: summary cards first, KEGG diagram only on expand ──────────────
+st.subheader("Affected Pathways")
 pathways = result.get("pathways", [])
 if not pathways:
     st.info("No core LUAD pathway was hit (no variant falls in these 8 pathways' genes).")
 else:
     st.caption("Green = mutated gene | Red = highly expressed (TPM ≥ 5) | Yellow = expressed (TPM ≥ 1)")
+
+    summary_cols = st.columns(len(pathways))
+    for col, pw in zip(summary_cols, pathways):
+        n_genes = len(pw["mutated_hit_genes"])
+        with col:
+            st.markdown(
+                "<div class='luad-card luad-card--blue' style='text-align:center; padding:0.8rem 0.5rem;'>"
+                f"<div style='font-weight:700; font-size:0.9rem;'>{html.escape(pw['name'])}</div>"
+                f"<span class='luad-badge luad-badge--info' style='margin-top:0.4rem;'>{n_genes} gene{'s' if n_genes != 1 else ''}</span>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
     for pw in pathways:
         with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=False):
             if pw["image_png_base64"]:
