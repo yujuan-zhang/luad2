@@ -105,20 +105,47 @@ st.markdown(
     """
     <style>
     .stApp { background-color: #F8FAFC; }
-    /* Room for the fixed navbar/footer bars (see below) so page content
-       and the sidebar's own content never sit underneath them. */
-    .main .block-container { padding-top: 4.5rem; padding-bottom: 3rem; }
+    /* Room for the fixed navbar (see below) so page content and the
+       sidebar's own content don't sit underneath it. The footer is no
+       longer fixed (see .luad-footer), so no bottom padding needed here. */
+    .main .block-container {
+        padding-top: 4.5rem; padding-bottom: 1.5rem;
+        padding-left: 2.5rem; padding-right: 2.5rem;
+    }
     [data-testid="stSidebar"] {
-        min-width: 230px; max-width: 230px;
+        min-width: 195px; max-width: 195px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
     }
     [data-testid="stSidebarUserContent"] { padding-top: 4.5rem; }
-    /* Streamlit's own toolbar (Deploy button, hamburger) sits at the very
-       top and would otherwise visually collide with our fixed navbar --
-       it's replaced by the navbar, not just covered by it. */
+    /* Thinner scrollbar in the sidebar instead of the browser's default
+       thick one. */
+    [data-testid="stSidebar"] { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+    [data-testid="stSidebar"] ::-webkit-scrollbar { width: 6px; }
+    [data-testid="stSidebar"] ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+    [data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    /* Streamlit's own toolbar (Deploy button, hamburger, sidebar-collapse
+       arrow) sits at the very top, in the same space our fixed navbar
+       occupies -- keeping it visible would mean either it's painted over
+       and unclickable (our navbar is on top) or the navbar has to start
+       lower to leave it room, which reopens the whole fixed-positioning
+       math this page already had two rounds of trouble with. Hiding it
+       entirely was the deliberate trade-off; restoring just the sidebar
+       toggle needs that restructure, not a one-line fix. */
     [data-testid="stHeader"] { display: none; }
     [data-testid="stMetricValue"] { color: #2563EB; }
-    .stButton > button[kind="primary"] { background-color: #2563EB; border-color: #2563EB; }
+    .stButton > button[kind="primary"] {
+        background-color: #EFF6FF;
+        border: 1.5px solid #2563EB;
+        color: #1E3A8A;
+        font-weight: 700;
+        position: relative;
+        padding-top: 0.35rem; padding-bottom: 0.35rem;
+    }
+    .stButton > button[kind="primary"]::before {
+        content: ""; position: absolute; top: 6px; left: 10px;
+        width: 6px; height: 6px; border-radius: 50%; background: #2563EB;
+    }
+    .stButton > button[kind="secondary"] { padding-top: 0.35rem; padding-bottom: 0.35rem; }
 
     .stApp h1 { color: #1E3A8A; }
     .stApp h2, .stApp h3 {
@@ -131,17 +158,16 @@ st.markdown(
     /* Fixed to the actual viewport edges -- unlike percentage/vw-based
        "breakout" margins, position:fixed isn't affected by the sidebar
        pushing the main content column off-center, so this reliably spans
-       the true full browser width including over the sidebar. */
-    .luad-navbar, .luad-footer {
+       the true full browser width including over the sidebar. Only the
+       navbar is fixed/sticky; the footer is a normal trailing element (see
+       .luad-footer) so it doesn't sit on top of content while scrolling. */
+    .luad-navbar {
         position: fixed;
+        top: 0;
         left: 0;
         width: 100vw;
         z-index: 999999;
         box-sizing: border-box;
-    }
-
-    .luad-navbar {
-        top: 0;
         background: #1E3A8A;
         padding: 0.8rem 2rem;
         display: flex;
@@ -161,10 +187,9 @@ st.markdown(
     .luad-navbar nav a.luad-nav-external { color: #93C5FD; }
 
     .luad-footer {
-        bottom: 0;
-        background: #FFFFFF;
+        margin-top: 2rem;
         border-top: 1px solid #E2E8F0;
-        padding: 0.45rem 2rem;
+        padding: 0.6rem 0;
         color: #94A3B8;
         font-size: 0.73rem;
         line-height: 1.3;
@@ -211,10 +236,10 @@ st.markdown(
     .luad-card {
         border: 1px solid #E5E7EB;
         border-radius: 12px;
-        padding: 1rem 1.25rem;
+        padding: 0.8rem 1.25rem;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
         background: #FFFFFF;
-        margin-bottom: 0.9rem;
+        margin-bottom: 0.7rem;
     }
     .luad-card--blue { border-left: 3px solid #2563EB; }
     .luad-card--flow { background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 65%); border-color: #DBEAFE; }
@@ -244,7 +269,7 @@ st.markdown(
     .luad-evidence-table tbody tr { border-top: 1px solid #F1F5F9; }
     .luad-evidence-table tbody tr:hover { background: #EFF6FF; }
 
-    .luad-hero { padding: 0.2rem 0 1.1rem; }
+    .luad-hero { padding: 0 0 0.5rem; }
     .luad-hero h2 { margin: 0 0 0.2rem; font-size: 1.5rem; color: #1E3A8A; border: none; padding: 0; }
     .luad-hero p { margin: 0; font-size: 0.92rem; color: #64748B; }
 
@@ -259,8 +284,8 @@ st.markdown(
     }
 
     @media print {
-        .luad-navbar, .luad-footer { position: static; width: 100%; }
-        .main .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .luad-navbar { position: static; width: 100%; }
+        .main .block-container { padding-top: 0.5rem; }
     }
     </style>
     """,
@@ -477,7 +502,14 @@ pathways = result.get("pathways", [])
 if not pathways:
     st.info("No core LUAD pathway was hit (no variant falls in these 8 pathways' genes).")
 else:
-    st.caption("Green = mutated gene | Red = highly expressed (TPM ≥ 5) | Yellow = expressed (TPM ≥ 1)")
+    st.markdown(
+        "<div style='font-size:0.82rem; color:#64748B; margin-bottom:0.6rem;'>"
+        "<span style='color:#22C55E;'>&#9632;</span> Mutated &nbsp;&nbsp;"
+        "<span style='color:#EF4444;'>&#9632;</span> High expression (TPM ≥ 5) &nbsp;&nbsp;"
+        "<span style='color:#EAB308;'>&#9632;</span> Expressed (TPM ≥ 1)"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if "selected_pathway" not in st.session_state:
         st.session_state["selected_pathway"] = pathways[0]["pathway_id"]
