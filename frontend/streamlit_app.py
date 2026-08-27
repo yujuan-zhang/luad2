@@ -23,6 +23,17 @@ _IMAGE_WIDTH_KWARG = (
 _LEVEL_ORDER = {"FDA-Approved": 0, "A": 1, "B": 2, "C": 3, "D": 4}
 
 st.set_page_config(page_title="LUAD Neoantigen & Targeted Therapy", layout="wide")
+
+# Streamlit has no set_page_config knob for sidebar width, so narrow it with CSS.
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] { min-width: 230px; max-width: 230px; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("LUAD Neoantigen & Targeted Therapy")
 st.caption("Case: TCGA-38-4627 — real somatic variants + real tumor expression, synthetic HLA typing")
 
@@ -77,11 +88,20 @@ n = len(stages)
 cols = st.columns([4, 1] * (n - 1) + [4])
 for i, (label, value) in enumerate(stages):
     with cols[i * 2]:
-        st.metric(label, value)
+        # st.metric's built-in label truncates with an ellipsis instead of
+        # wrapping when the column is this narrow -- a plain markdown label
+        # above the number wraps onto a second line instead.
+        st.markdown(
+            f"<div style='text-align:center;'>"
+            f"<div style='font-size:0.8rem; opacity:0.65; line-height:1.25; min-height:2.1em;'>{label}</div>"
+            f"<div style='font-size:1.9rem; font-weight:600; line-height:1.1;'>{value}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
     if i < n - 1:
         with cols[i * 2 + 1]:
             st.markdown(
-                "<div style='text-align:center; font-size:1.6rem; padding-top:0.6rem; opacity:0.5;'>→</div>",
+                "<div style='text-align:center; font-size:1.6rem; padding-top:2.1rem; opacity:0.5;'>→</div>",
                 unsafe_allow_html=True,
             )
 st.caption("Expressed: TPM ≥ 1  |  HLA-presented: IC50 ≤ 500nM")
