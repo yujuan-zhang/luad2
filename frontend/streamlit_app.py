@@ -67,14 +67,16 @@ def _drug_table_html(matches):
     """Small evidence table rendered as plain HTML (with real badges) instead
     of st.dataframe -- a native Streamlit grid can't put a colored pill in a
     cell, and the raw SENSITIVITYRESPONSE/drug_class strings read as
-    database internals rather than a clinical summary."""
+    database internals rather than a clinical summary. No vertical grid
+    lines, light header background, hover row highlight -- reads as a
+    product table rather than a spreadsheet dump."""
     rows = []
     for m in matches:
         level = m.get("level") or "—"
         line = m.get("line") or "—"
         resp_label, resp_class = _response_label(m.get("significance"))
         rows.append(
-            "<tr style='border-bottom:1px solid #F1F5F9;'>"
+            "<tr>"
             f"<td style='padding:0.5rem 0.7rem;'>{html.escape(m['gene'])}</td>"
             f"<td style='padding:0.5rem 0.7rem;'>{html.escape(m['protein_change'])}</td>"
             f"<td style='padding:0.5rem 0.7rem; font-weight:600;'>{html.escape(m['drug'])}</td>"
@@ -84,13 +86,13 @@ def _drug_table_html(matches):
             "</tr>"
         )
     header = (
-        "<tr style='border-bottom:1px solid #E5E7EB; text-align:left; opacity:0.55; font-size:0.78rem;'>"
-        "<th style='padding:0.4rem 0.7rem;'>Gene</th><th style='padding:0.4rem 0.7rem;'>Mutation</th>"
-        "<th style='padding:0.4rem 0.7rem;'>Drug</th><th style='padding:0.4rem 0.7rem;'>Level</th>"
-        "<th style='padding:0.4rem 0.7rem;'>Line</th><th style='padding:0.4rem 0.7rem;'>Response</th></tr>"
+        "<tr>"
+        "<th style='padding:0.45rem 0.7rem;'>Gene</th><th style='padding:0.45rem 0.7rem;'>Mutation</th>"
+        "<th style='padding:0.45rem 0.7rem;'>Drug</th><th style='padding:0.45rem 0.7rem;'>Level</th>"
+        "<th style='padding:0.45rem 0.7rem;'>Line</th><th style='padding:0.45rem 0.7rem;'>Response</th></tr>"
     )
     return (
-        "<div class='luad-card' style='padding:0.4rem 0.2rem;'>"
+        "<div class='luad-card luad-evidence-table' style='padding:0.4rem 0.2rem;'>"
         "<table style='width:100%; border-collapse:collapse; font-size:0.85rem;'>"
         f"<thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
         "</div>"
@@ -141,7 +143,7 @@ st.markdown(
     .luad-navbar {
         top: 0;
         background: #1E3A8A;
-        padding: 0.9rem 2rem;
+        padding: 0.8rem 2rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -150,10 +152,10 @@ st.markdown(
     }
     .luad-navbar .luad-brand { color: #FFFFFF; font-weight: 800; font-size: 1.1rem; }
     .luad-navbar .luad-brand-divider { color: rgba(255,255,255,0.35); margin: 0 0.65rem; font-weight: 300; }
-    .luad-navbar .luad-brand-sub { color: #93C5FD; font-weight: 400; font-size: 0.86rem; }
+    .luad-navbar .luad-brand-sub { color: #93C5FD; font-weight: 400; font-size: 0.82rem; opacity: 0.85; }
     .luad-navbar nav a {
         color: #BFDBFE; text-decoration: none; font-size: 0.86rem;
-        padding: 0.3rem 0.7rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
+        padding: 0.3rem 0.8rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
     }
     .luad-navbar nav a:hover { color: #FFFFFF; background: rgba(255,255,255,0.12); }
     .luad-navbar nav a.luad-nav-external { color: #93C5FD; }
@@ -162,9 +164,9 @@ st.markdown(
         bottom: 0;
         background: #FFFFFF;
         border-top: 1px solid #E2E8F0;
-        padding: 0.5rem 2rem;
-        color: #64748B;
-        font-size: 0.78rem;
+        padding: 0.45rem 2rem;
+        color: #94A3B8;
+        font-size: 0.73rem;
         line-height: 1.3;
         text-align: center;
     }
@@ -194,19 +196,16 @@ st.markdown(
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
 
-    [data-testid="stFileUploader"] {
-        border: 1px solid #E5E7EB;
-        border-radius: 10px;
-        padding: 0.5rem 0.6rem;
-        background: #F8FAFC;
-        margin-bottom: 0.5rem;
-    }
+    /* One border (the dropzone's own), not a wrapper box around it too --
+       double-boxing read as more "raw widget" clutter, not less. */
+    [data-testid="stFileUploader"] { margin-bottom: 0.3rem; }
     [data-testid="stFileUploader"] label p { font-size: 0.85rem; font-weight: 600; }
     [data-testid="stFileUploaderDropzone"] {
-        background: #FFFFFF !important;
+        background: #F8FAFC !important;
         border: 1px dashed #CBD5E1 !important;
         border-radius: 8px !important;
-        min-height: 2.6rem !important;
+        min-height: 2.4rem !important;
+        padding: 0.4rem !important;
     }
 
     .luad-card {
@@ -232,6 +231,37 @@ st.markdown(
     .luad-badge--muted { background: #F1F5F9; color: #475569; }
     .luad-badge--warning { background: #FEF3C7; color: #B45309; }
     .luad-badge--danger { background: #FEE2E2; color: #B91C1C; }
+    .luad-badge--success { background: #DCFCE7; color: #15803D; }
+
+    /* Result cards (Patient/Case, Key Clinical Finding) sit right under a
+       section header that already has a blue left bar -- repeating the
+       same bar on the card read as redundant, so these get a thin top
+       accent instead. */
+    .luad-card--accent-top { border-top: 3px solid #2563EB; }
+
+    .luad-evidence-table thead tr { background: #F8FAFC; text-align: left; }
+    .luad-evidence-table th { opacity: 0.55; font-size: 0.78rem; font-weight: 600; }
+    .luad-evidence-table tbody tr { border-top: 1px solid #F1F5F9; }
+    .luad-evidence-table tbody tr:hover { background: #EFF6FF; }
+
+    .luad-hero { padding: 0.2rem 0 1.1rem; }
+    .luad-hero h2 { margin: 0 0 0.2rem; font-size: 1.5rem; color: #1E3A8A; border: none; padding: 0; }
+    .luad-hero p { margin: 0; font-size: 0.92rem; color: #64748B; }
+
+    /* Best-effort "active" nav link: CSS :target only updates when a nav
+       link is actually clicked (no JS scroll-spy), so this reflects the
+       last section jumped to, not necessarily what's on screen. */
+    body:has(#home:target) .luad-navbar nav a[href="#home"],
+    body:has(#analysis:target) .luad-navbar nav a[href="#analysis"],
+    body:has(#results:target) .luad-navbar nav a[href="#results"],
+    body:has(#about:target) .luad-navbar nav a[href="#about"] {
+        color: #FFFFFF; box-shadow: inset 0 -2px 0 #FFFFFF;
+    }
+
+    @media print {
+        .luad-navbar, .luad-footer { position: static; width: 100%; }
+        .main .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -254,17 +284,27 @@ st.markdown(
 )
 
 st.markdown("<div id='home'></div>", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="luad-hero">
+      <h2>Personalized Therapy Prioritization for LUAD</h2>
+      <p>From genomic and transcriptomic profiles to targeted therapy and neoantigen prioritization.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.markdown("### Patient / Case")
 st.markdown(
     """
-    <div class="luad-card luad-card--blue">
+    <div class="luad-card luad-card--accent-top">
       <span class="luad-badge luad-badge--info">TCGA-38-4627</span>
       <span class="luad-badge luad-badge--info">LUAD</span>
       <span class="luad-badge luad-badge--muted">Demo Case</span>
-      <div style="margin-top:0.6rem; font-size:0.85rem;">
-        <span style="color:#15803D;">✓ Somatic variants</span>&nbsp;&nbsp;
-        <span style="color:#15803D;">✓ Tumor RNA</span>&nbsp;&nbsp;
-        <span class="luad-badge luad-badge--warning">HLA Synthetic</span>
+      <div style="margin-top:0.6rem;">
+        <span class="luad-badge luad-badge--success">✓ Somatic VCF</span>
+        <span class="luad-badge luad-badge--success">✓ Tumor RNA</span>
+        <span class="luad-badge luad-badge--warning">⚠ Synthetic HLA</span>
       </div>
     </div>
     """,
@@ -325,12 +365,13 @@ flow_html = "<div class='luad-card luad-card--flow' style='display:flex; align-i
 for i, (label, value) in enumerate(stages):
     flow_html += (
         "<div style='flex:1; text-align:center;'>"
-        f"<div style='font-size:0.8rem; opacity:0.65; line-height:1.25; min-height:2.1em;'>{html.escape(label)}</div>"
-        f"<div style='font-size:1.9rem; font-weight:700; line-height:1.1; color:#2563EB;'>{value:,}</div>"
+        "<div style='height:2.3em; display:flex; align-items:flex-end; justify-content:center; "
+        f"font-size:0.8rem; opacity:0.65; line-height:1.15;'>{html.escape(label)}</div>"
+        f"<div style='font-size:1.9rem; font-weight:700; line-height:1.1; margin-top:0.3rem; color:#2563EB;'>{value:,}</div>"
         "</div>"
     )
     if i < n - 1:
-        flow_html += "<div style='font-size:1.6rem; padding-top:2.1rem; color:#93C5FD;'>→</div>"
+        flow_html += "<div style='font-size:1.6rem; padding-top:2.6rem; color:#BFDBFE;'>→</div>"
 flow_html += "</div>"
 st.markdown(flow_html, unsafe_allow_html=True)
 with st.expander("ⓘ Filtering criteria"):
@@ -367,7 +408,7 @@ else:
             if alternatives else ""
         )
         st.markdown(
-            "<div class='luad-card luad-card--blue'>"
+            "<div class='luad-card luad-card--accent-top'>"
             f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
             f"<div style='font-size:1.1rem; font-weight:700;'>{html.escape(gene)} {html.escape(change)}</div>"
             f"<span class='luad-badge {badge_class}'>{html.escape(top_level)}</span>"
@@ -430,7 +471,7 @@ with tab_neo:
         st.markdown(f"##### Full Ranking ({len(neoantigens)})")
         st.dataframe(pd.DataFrame(neoantigens), use_container_width=True, hide_index=True)
 
-# ── Pathways: summary cards first, KEGG diagram only on expand ──────────────
+# ── Pathways: click a summary card to select it, one detail view below ──────
 st.subheader("Affected Pathways")
 pathways = result.get("pathways", [])
 if not pathways:
@@ -438,24 +479,29 @@ if not pathways:
 else:
     st.caption("Green = mutated gene | Red = highly expressed (TPM ≥ 5) | Yellow = expressed (TPM ≥ 1)")
 
+    if "selected_pathway" not in st.session_state:
+        st.session_state["selected_pathway"] = pathways[0]["pathway_id"]
+
     summary_cols = st.columns(len(pathways))
     for col, pw in zip(summary_cols, pathways):
         n_genes = len(pw["mutated_hit_genes"])
+        is_active = st.session_state["selected_pathway"] == pw["pathway_id"]
         with col:
-            st.markdown(
-                "<div class='luad-card luad-card--blue' style='text-align:center; padding:0.8rem 0.5rem;'>"
-                f"<div style='font-weight:700; font-size:0.9rem;'>{html.escape(pw['name'])}</div>"
-                f"<span class='luad-badge luad-badge--info' style='margin-top:0.4rem;'>{n_genes} gene{'s' if n_genes != 1 else ''}</span>"
-                "</div>",
-                unsafe_allow_html=True,
-            )
+            if st.button(
+                f"{pw['name']} · {n_genes} gene{'s' if n_genes != 1 else ''}",
+                key=f"pwbtn_{pw['pathway_id']}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                st.session_state["selected_pathway"] = pw["pathway_id"]
 
-    for pw in pathways:
-        with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=False):
-            if pw["image_png_base64"]:
-                st.image(base64.b64decode(pw["image_png_base64"]), **{_IMAGE_WIDTH_KWARG: True})
-            st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True, hide_index=True)
-            st.caption(f"[KEGG's own colored pathway link (fallback/reference)]({pw['kegg_url']})")
+    selected = next((p for p in pathways if p["pathway_id"] == st.session_state["selected_pathway"]), pathways[0])
+    with st.container(border=True):
+        st.markdown(f"**{selected['name']} — {', '.join(selected['mutated_hit_genes'])}**")
+        if selected["image_png_base64"]:
+            st.image(base64.b64decode(selected["image_png_base64"]), **{_IMAGE_WIDTH_KWARG: True})
+        st.dataframe(pd.DataFrame(selected["gene_table"]), use_container_width=True, hide_index=True)
+        st.markdown(f"[KEGG's own colored pathway link (fallback/reference)]({selected['kegg_url']})")
 
 # ── Supporting detail ─────────────────────────────────────────────────────────
 with st.expander(f"All Somatic Variants ({len(result['variants'])})"):
@@ -464,16 +510,34 @@ with st.expander(f"All Somatic Variants ({len(result['variants'])})"):
 # ── About ──────────────────────────────────────────────────────────────────
 st.markdown("<div id='about'></div>", unsafe_allow_html=True)
 st.subheader("About")
-st.markdown(
-    "<div class='luad-card'>"
-    "LUADtx is an end-to-end precision oncology platform for lung adenocarcinoma, integrating "
-    "somatic variant analysis, tumor expression, HLA typing, targeted-therapy evidence, pathway "
-    "interpretation, and neoantigen prioritization. The platform combines Nextflow/nf-core, "
-    "<a href='https://civicdb.org' target='_blank'>CIViC</a>, KEGG, UniProt, pVACtools/MHCflurry, "
-    "FastAPI, Streamlit, Docker, and AWS into a reproducible research workflow."
-    "</div>",
-    unsafe_allow_html=True,
-)
+_ABOUT_STACK = [
+    ("Workflow", ["Nextflow", "nf-core"]),
+    ("Evidence", ["CIViC", "KEGG"]),
+    ("Prediction", ["UniProt", "pVACtools", "MHCflurry"]),
+    ("Deployment", ["FastAPI", "Streamlit", "Docker", "AWS"]),
+]
+about_col1, about_col2 = st.columns([3, 2])
+with about_col1:
+    st.markdown(
+        "<div class='luad-card' style='height:100%;'>"
+        "LUADtx is an end-to-end precision oncology platform for lung adenocarcinoma — from "
+        "somatic variants and tumor expression to targeted-therapy evidence, pathway context, "
+        "and neoantigen prioritization. Built as a reproducible "
+        "<a href='https://civicdb.org' target='_blank'>CIViC</a>-backed research and portfolio project."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+with about_col2:
+    stack_html = "<div class='luad-card' style='height:100%;'>"
+    for group, tools in _ABOUT_STACK:
+        tags = " ".join(f"<span class='luad-badge luad-badge--muted'>{html.escape(t)}</span>" for t in tools)
+        stack_html += (
+            f"<div style='margin-bottom:0.5rem;'>"
+            f"<div style='font-size:0.72rem; opacity:0.6; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:0.25rem;'>{group}</div>"
+            f"{tags}</div>"
+        )
+    stack_html += "</div>"
+    st.markdown(stack_html, unsafe_allow_html=True)
 
 # ── Footer ─────────────────────────────────────────────────────────────────
 st.markdown(
