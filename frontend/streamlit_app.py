@@ -52,15 +52,18 @@ st.markdown(
     """
     <style>
     .stApp { background-color: #F8FAFC; }
-    /* No max-width here: the navbar/footer bars need to span the full
-       width of the main content pane (right of the sidebar) edge to edge,
-       not just a centered column -- a max-width on block-container would
-       constrain them the same as everything else. */
-    .main .block-container { padding-top: 1.5rem; padding-bottom: 0; }
+    /* Room for the fixed navbar/footer bars (see below) so page content
+       and the sidebar's own content never sit underneath them. */
+    .main .block-container { padding-top: 4.5rem; padding-bottom: 8rem; }
     [data-testid="stSidebar"] {
         min-width: 230px; max-width: 230px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
     }
+    [data-testid="stSidebarUserContent"] { padding-top: 4.5rem; }
+    /* Streamlit's own toolbar (Deploy button, hamburger) sits at the very
+       top and would otherwise visually collide with our fixed navbar --
+       it's replaced by the navbar, not just covered by it. */
+    [data-testid="stHeader"] { display: none; }
     [data-testid="stMetricValue"] { color: #2563EB; }
     .stButton > button[kind="primary"] { background-color: #2563EB; border-color: #2563EB; }
 
@@ -72,18 +75,20 @@ st.markdown(
         margin-top: 1.6rem;
     }
 
-    /* Break out of the sidebar-offset content column so these bars span
-       the full browser viewport (over the sidebar too), not just the
-       main content pane -- 100vw/50vw are relative to the true viewport
-       regardless of the sidebar's presence, unlike percentage widths. */
+    /* Fixed to the actual viewport edges -- unlike percentage/vw-based
+       "breakout" margins, position:fixed isn't affected by the sidebar
+       pushing the main content column off-center, so this reliably spans
+       the true full browser width including over the sidebar. */
     .luad-navbar, .luad-footer {
+        position: fixed;
+        left: 0;
         width: 100vw;
-        position: relative;
-        left: 50%;
-        margin-left: -50vw;
+        z-index: 999999;
+        box-sizing: border-box;
     }
 
     .luad-navbar {
+        top: 0;
         background: #1E3A8A;
         padding: 0.9rem 2rem;
         display: flex;
@@ -91,7 +96,6 @@ st.markdown(
         align-items: center;
         flex-wrap: wrap;
         gap: 0.6rem;
-        margin-bottom: 1.6rem;
     }
     .luad-navbar a { color: #BFDBFE; text-decoration: none; font-size: 0.88rem; }
     .luad-navbar a:hover { color: #FFFFFF; }
@@ -99,15 +103,19 @@ st.markdown(
     .luad-navbar .luad-brand-sub { color: #BFDBFE; font-weight: 400; font-size: 0.92rem; margin-left: 0.5rem; }
 
     .luad-footer {
+        bottom: 0;
         background: #1E3A8A;
-        margin-top: 2.5rem;
-        padding: 1.2rem 2rem;
+        padding: 0.9rem 2rem;
         color: #BFDBFE;
         font-size: 0.85rem;
-        line-height: 1.7;
+        line-height: 1.5;
     }
     .luad-footer a { color: #FFFFFF; text-decoration: none; font-weight: 600; }
     .luad-footer a:hover { text-decoration: underline; }
+
+    /* So the nav links' anchor-jump doesn't land the target section
+       right underneath the fixed navbar. */
+    #home, #analysis, #results, #about { scroll-margin-top: 4.5rem; }
 
     .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
     .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
@@ -169,7 +177,6 @@ st.markdown(
 
 st.markdown(
     """
-    <div id="home"></div>
     <div class="luad-navbar">
       <div><span class="luad-brand">LUADtx</span><span class="luad-brand-sub">| End-to-End Personalized Therapy Prioritization</span></div>
       <div>
@@ -184,6 +191,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.markdown("<div id='home'></div>", unsafe_allow_html=True)
 st.markdown("### Patient / Case")
 st.markdown(
     """
