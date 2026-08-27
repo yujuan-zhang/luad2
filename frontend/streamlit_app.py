@@ -110,14 +110,14 @@ st.markdown(
        sidebar's own content don't sit underneath it. The footer is no
        longer fixed (see .luad-footer), so no bottom padding needed here. */
     .main .block-container {
-        padding-top: 4.5rem; padding-bottom: 1.5rem;
+        padding-top: 5.6rem; padding-bottom: 1.5rem;
         padding-left: 2.5rem; padding-right: 2.5rem;
     }
     [data-testid="stSidebar"] {
         min-width: 172px; max-width: 172px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
     }
-    [data-testid="stSidebarUserContent"] { padding-top: 4.5rem; }
+    [data-testid="stSidebarUserContent"] { padding-top: 5.6rem; }
     /* Thinner scrollbar in the sidebar instead of the browser's default
        thick one. */
     [data-testid="stSidebar"] { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
@@ -170,19 +170,19 @@ st.markdown(
         z-index: 999999;
         box-sizing: border-box;
         background: #1E3A8A;
-        padding: 0.8rem 2rem;
+        padding: 1.15rem 2.2rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
         gap: 0.6rem;
     }
-    .luad-navbar .luad-brand { color: #FFFFFF; font-weight: 800; font-size: 1.1rem; }
-    .luad-navbar .luad-brand-divider { color: rgba(255,255,255,0.35); margin: 0 0.65rem; font-weight: 300; }
-    .luad-navbar .luad-brand-sub { color: #93C5FD; font-weight: 400; font-size: 0.82rem; opacity: 0.85; }
+    .luad-navbar .luad-brand { color: #FFFFFF; font-weight: 800; font-size: 1.4rem; }
+    .luad-navbar .luad-brand-divider { color: rgba(255,255,255,0.35); margin: 0 0.75rem; font-weight: 300; }
+    .luad-navbar .luad-brand-sub { color: #93C5FD; font-weight: 400; font-size: 1rem; opacity: 0.85; }
     .luad-navbar nav a {
-        color: #BFDBFE; text-decoration: none; font-size: 0.86rem;
-        padding: 0.3rem 0.8rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
+        color: #BFDBFE; text-decoration: none; font-size: 1rem;
+        padding: 0.4rem 0.9rem; border-radius: 999px; transition: background 0.15s, color 0.15s;
     }
     .luad-navbar nav a:hover { color: #FFFFFF; background: rgba(255,255,255,0.12); }
     .luad-navbar nav a.luad-nav-external { color: #93C5FD; }
@@ -201,7 +201,7 @@ st.markdown(
 
     /* So the nav links' anchor-jump doesn't land the target section
        right underneath the fixed navbar. */
-    #home, #analysis, #results, #about { scroll-margin-top: 4.5rem; }
+    #home, #analysis, #results, #about { scroll-margin-top: 5.6rem; }
 
     .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
     .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
