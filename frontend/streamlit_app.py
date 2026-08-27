@@ -99,6 +99,26 @@ st.markdown(
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
 
+    [data-testid="stDataFrame"] {
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-testid="stFileUploader"] {
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        padding: 0.6rem 0.7rem;
+        background: #F8FAFC;
+        margin-bottom: 0.6rem;
+    }
+    [data-testid="stFileUploaderDropzone"] {
+        background: #FFFFFF !important;
+        border: 1px dashed #CBD5E1 !important;
+        border-radius: 8px !important;
+    }
+
     .luad-card {
         border: 1px solid #E5E7EB;
         border-radius: 12px;
@@ -258,7 +278,7 @@ else:
             if not other.empty:
                 other_drugs = list(dict.fromkeys(other["drug"]))
                 st.markdown(f"**Other systemic therapy evidence (not targeted):** {', '.join(other_drugs)}")
-            st.dataframe(group.drop(columns=["_rank"]), use_container_width=True)
+            st.dataframe(group.drop(columns=["_rank"]), use_container_width=True, hide_index=True)
 
 # ── Tabs: the two main analysis branches ─────────────────────────────────────
 tab_therapy, tab_neo = st.tabs(["Targeted Therapy", "Neoantigen / INT"])
@@ -267,7 +287,7 @@ with tab_therapy:
     if not drug_matches:
         st.info("No targeted drug matches found.")
     else:
-        st.dataframe(pd.DataFrame(drug_matches), use_container_width=True)
+        st.dataframe(pd.DataFrame(drug_matches), use_container_width=True, hide_index=True)
 
 with tab_neo:
     neoantigens = result["neoantigens"]
@@ -300,7 +320,7 @@ with tab_neo:
                 st.markdown(card_html, unsafe_allow_html=True)
 
         st.markdown(f"##### Full Ranking ({len(neoantigens)})")
-        st.dataframe(pd.DataFrame(neoantigens), use_container_width=True)
+        st.dataframe(pd.DataFrame(neoantigens), use_container_width=True, hide_index=True)
 
 # ── Pathways: collapsed by default, expand for the KEGG diagram ─────────────
 st.subheader("Pathways")
@@ -313,21 +333,24 @@ else:
         with st.expander(f"{pw['name']} — {', '.join(pw['mutated_hit_genes'])}", expanded=False):
             if pw["image_png_base64"]:
                 st.image(base64.b64decode(pw["image_png_base64"]), **{_IMAGE_WIDTH_KWARG: True})
-            st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True)
+            st.dataframe(pd.DataFrame(pw["gene_table"]), use_container_width=True, hide_index=True)
             st.caption(f"[KEGG's own colored pathway link (fallback/reference)]({pw['kegg_url']})")
 
 # ── Supporting detail ─────────────────────────────────────────────────────────
 with st.expander(f"All Somatic Variants ({len(result['variants'])})"):
-    st.dataframe(pd.DataFrame(result["variants"]), use_container_width=True)
+    st.dataframe(pd.DataFrame(result["variants"]), use_container_width=True, hide_index=True)
 
 # ── About ──────────────────────────────────────────────────────────────────
 st.markdown("<div id='about'></div>", unsafe_allow_html=True)
 st.subheader("About")
 st.markdown(
+    "<div class='luad-card'>"
     "LUADtx integrates real somatic-variant annotation, real drug-evidence matching "
-    "([CIViC](https://civicdb.org)), real KEGG pathway context, and real neoantigen "
-    "prediction (UniProt sequences + pVACtools/MHCflurry binding) into one LUAD "
-    "precision-oncology pipeline. It's a research and portfolio demo, not a clinical tool."
+    "(<a href='https://civicdb.org' target='_blank'>CIViC</a>), real KEGG pathway context, "
+    "and real neoantigen prediction (UniProt sequences + pVACtools/MHCflurry binding) into "
+    "one LUAD precision-oncology pipeline. It's a research and portfolio demo, not a clinical tool."
+    "</div>",
+    unsafe_allow_html=True,
 )
 
 # ── Footer ─────────────────────────────────────────────────────────────────
