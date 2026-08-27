@@ -312,7 +312,7 @@ st.markdown(
         <a href="#analysis">Analysis</a>
         <a href="#results">Results</a>
         <a href="#about">About</a>
-        <a class="luad-nav-external" href="https://github.com/yujuan-zhang/luad2" target="_blank">GitHub ↗</a>
+        <a class="luad-nav-external" href="https://github.com/yujuan-zhang/luadtx" target="_blank">GitHub ↗</a>
       </nav>
     </div>
     """,
@@ -626,7 +626,7 @@ st.markdown(
     <div class="luad-footer">
       Yujuan Zhang, PhD | Professor &nbsp;·&nbsp;
       <a href="https://github.com/yujuan-zhang" target="_blank">GitHub</a> &nbsp;·&nbsp;
-      <a href="https://github.com/yujuan-zhang/luad2" target="_blank">⭐ Star this project</a> &nbsp;·&nbsp;
+      <a href="https://github.com/yujuan-zhang/luadtx" target="_blank">⭐ Star this project</a> &nbsp;·&nbsp;
       © 2026 Yujuan Zhang. All rights reserved.
     </div>
     """,
