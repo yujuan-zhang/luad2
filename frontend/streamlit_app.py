@@ -110,14 +110,14 @@ st.markdown(
        sidebar's own content don't sit underneath it. The footer is no
        longer fixed (see .luad-footer), so no bottom padding needed here. */
     .main .block-container {
-        padding-top: 7rem; padding-bottom: 1.5rem;
+        padding-top: 6.2rem; padding-bottom: 1.5rem;
         padding-left: 2.5rem; padding-right: 2.5rem;
     }
     [data-testid="stSidebar"] {
         min-width: 172px; max-width: 172px;
         background-color: #FFFFFF; border-right: 1px solid #E5E7EB;
     }
-    [data-testid="stSidebarUserContent"] { padding-top: 7rem; }
+    [data-testid="stSidebarUserContent"] { padding-top: 6.2rem; }
     /* Thinner scrollbar in the sidebar instead of the browser's default
        thick one. */
     [data-testid="stSidebar"] { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
@@ -170,7 +170,7 @@ st.markdown(
         z-index: 999999;
         box-sizing: border-box;
         background: #1E3A8A;
-        padding: 1.7rem 2.6rem;
+        padding: 1.3rem 2.6rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -201,7 +201,7 @@ st.markdown(
 
     /* So the nav links' anchor-jump doesn't land the target section
        right underneath the fixed navbar. */
-    #home, #analysis, #results, #about { scroll-margin-top: 7rem; }
+    #home, #analysis, #results, #about { scroll-margin-top: 6.2rem; }
 
     .stTabs [data-baseweb="tab-list"] { gap: 1.6rem; }
     .stTabs [data-baseweb="tab"] { color: #6B7280; font-weight: 500; }
