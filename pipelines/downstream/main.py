@@ -31,6 +31,7 @@ def run_pipeline(vcf_path, expression_path, hla_path):
     # only returns the peptide-allele pairs that also clear the IC50 bar.
     with_peptide = pvactools.variants_with_peptide(expressed)
     neoantigens, peptide_hla_pairs = pvactools.predict_neoantigens(expressed, hla_alleles)
+    vaccine_construct = pvactools.design_vaccine_construct(neoantigens, hla_alleles)
     pathways = pathway.analyze_pathways(protein_altering, expression_df)
 
     # This is the neoantigen branch's flow specifically, so the actionable
@@ -55,6 +56,7 @@ def run_pipeline(vcf_path, expression_path, hla_path):
         "variants": variants,
         "drug_matches": drug_matches,
         "neoantigens": neoantigens,
+        "vaccine_construct": vaccine_construct,
         "pathways": pathways,
     }
 

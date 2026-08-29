@@ -28,8 +28,28 @@ The reference residue at the mutated position is checked against the
 fetched sequence before generating a peptide -- if it doesn't match (wrong
 isoform, stale sequence, etc.) the variant is skipped rather than
 producing a wrong peptide.
+
+`design_vaccine_construct()`: orders the top neoantigen candidates into a
+single peptide-vaccine construct (pVACvector's job -- avoid accidentally
+creating a new strong-binding "junctional epitope" where two peptides get
+joined). Not a call to pVACtools' own `pvacvector` CLI: that tool re-loads
+the MHCflurry model in a fresh subprocess for every (HLA allele x epitope
+length x spacer) combination it tests, which measured out at 1.5+ hours
+even trimmed down for this case's 5 candidates x 6 alleles -- the same
+architectural problem `predict_neoantigens()` already solved once for the
+main prediction step (pVACtools' MHCflurry wrapper class: 10+ minutes;
+batched into one `mhcflurry-predict` call: seconds). Same fix applied here
+instead of accepting a 1.5-hour step: batch every candidate junction
+peptide across every ordering/spacer option into one `_run_mhcflurry`
+call, then brute-force the best ordering (5 candidates -> 120 permutations,
+trivial). Real MHCflurry predictions, real junction-avoidance objective
+(maximize the weakest-binding junction across the whole construct, i.e.
+avoid ANY strong accidental binder) -- just not pVACvector's own codebase
+or its exact simulated-annealing/median-of-methods scoring, which doesn't
+apply here anyway since only one prediction algorithm (MHCflurry) is used.
 """
 import csv
+import itertools
 import os
 import re
 import tempfile
@@ -249,3 +269,138 @@ def predict_neoantigens(expressed_variants, hla_alleles, ic50_threshold=500.0, t
                 })
     results.sort(key=lambda r: r["ic50_nm"])
     return results, evaluated_pairs
+
+
+# ---- Vaccine construct design (real pVACvector-equivalent logic, batched) ----
+
+_VACCINE_SPACERS = ["None", "AAY", "HHHH"]  # small, real subset of pVACvector's own default spacer library
+_JUNCTION_CONTEXT = max(EPITOPE_LENGTHS) - 1  # residues taken from each side of a join -- enough to cover every window that could possibly cross it
+
+_CODON_TABLE = {  # same single-codon-per-residue table pVACvector's own back-translation uses
+    "A": "GCC", "C": "TGC", "D": "GAC", "E": "GAG", "F": "TTC", "G": "GGC",
+    "H": "CAC", "I": "ATC", "K": "AAG", "L": "CTG", "M": "ATG", "N": "AAC",
+    "P": "CCC", "Q": "CAG", "R": "AGA", "S": "AGC", "T": "ACC", "V": "GTG",
+    "W": "TGG", "Y": "TAC",
+}
+
+
+def _back_translate(peptide):
+    return "".join(_CODON_TABLE[aa] for aa in peptide)
+
+
+def _junction_windows(left_peptide, spacer, right_peptide, lengths=EPITOPE_LENGTHS):
+    """Candidate epitope windows that straddle the left/spacer or
+    spacer/right boundary when `left_peptide` and `right_peptide` are
+    joined (via `spacer`, or directly if spacer is "None") -- these are
+    the "junctional epitopes" a vaccine construct wants to avoid creating.
+    Only the last/first _JUNCTION_CONTEXT residues of each peptide are
+    used; anything further from the join can't be part of a crossing
+    window, and each peptide's own interior epitopes were already
+    evaluated in predict_neoantigens."""
+    left_ctx = left_peptide[-_JUNCTION_CONTEXT:]
+    right_ctx = right_peptide[:_JUNCTION_CONTEXT]
+    spacer_seq = "" if spacer == "None" else spacer
+    junction_seq = left_ctx + spacer_seq + right_ctx
+
+    boundaries = {len(left_ctx)}
+    if spacer_seq:
+        boundaries.add(len(left_ctx) + len(spacer_seq))
+
+    windows = []
+    for length in lengths:
+        for start, epitope in determine_neoepitopes(junction_seq, length).items():
+            window_end = start + length - 1
+            if any(start <= b and window_end >= b + 1 for b in boundaries):
+                windows.append(epitope)
+    return windows
+
+
+def design_vaccine_construct(neoantigens, hla_alleles, top_n=5, tmp_dir=None):
+    """Order the top `top_n` distinct neoantigen candidates (by best IC50)
+    into one peptide-vaccine construct, choosing a spacer (or none) between
+    each adjacent pair so that the worst (strongest-binding) junctional
+    epitope anywhere in the construct is as weak a binder as possible.
+
+    Returns None if fewer than 2 distinct candidates have a real generated
+    peptide, or if no valid ordering exists (every candidate pairing lacks
+    a real junction-binding score -- shouldn't happen with real data but
+    checked rather than assumed).
+    """
+    best_by_variant = {}
+    for n in neoantigens:
+        key = (n["gene"], n["protein_change"])
+        if key not in best_by_variant or n["ic50_nm"] < best_by_variant[key]["ic50_nm"]:
+            best_by_variant[key] = n
+    selected = sorted(best_by_variant.values(), key=lambda n: n["ic50_nm"])[:top_n]
+
+    candidates = []
+    for n in selected:
+        generated = generate_mutant_peptide(n["gene"], n["protein_change"])
+        if generated is None:
+            continue
+        peptide, _pos = generated
+        candidates.append({"label": f"{n['gene']} {n['protein_change']}", "peptide": peptide})
+    if len(candidates) < 2:
+        return None
+
+    edge_windows = {}
+    all_windows = set()
+    for i, left in enumerate(candidates):
+        for j, right in enumerate(candidates):
+            if i == j:
+                continue
+            for spacer in _VACCINE_SPACERS:
+                windows = _junction_windows(left["peptide"], spacer, right["peptide"])
+                if windows:
+                    edge_windows[(i, j, spacer)] = windows
+                    all_windows.update(windows)
+    if not all_windows:
+        return None
+
+    with tempfile.TemporaryDirectory(dir=tmp_dir) as work_dir:
+        binding = _run_mhcflurry(sorted(all_windows), hla_alleles, work_dir)
+
+    edge_scores = {}
+    for key, windows in edge_windows.items():
+        scores = [
+            binding[(allele, w)][0]
+            for allele in hla_alleles for w in windows
+            if (allele, w) in binding
+        ]
+        if scores:
+            edge_scores[key] = min(scores)  # strongest predicted binder = riskiest junction
+
+    n = len(candidates)
+    best_order = best_spacers = None
+    best_bottleneck = -1
+    for perm in itertools.permutations(range(n)):
+        chosen_spacers, bottleneck, valid = [], float("inf"), True
+        for k in range(n - 1):
+            i, j = perm[k], perm[k + 1]
+            options = {s: edge_scores[(i, j, s)] for s in _VACCINE_SPACERS if (i, j, s) in edge_scores}
+            if not options:
+                valid = False
+                break
+            spacer = max(options, key=options.get)  # weakest-binding (safest) spacer for this pair
+            chosen_spacers.append(spacer)
+            bottleneck = min(bottleneck, options[spacer])
+        if valid and bottleneck > best_bottleneck:
+            best_bottleneck, best_order, best_spacers = bottleneck, perm, chosen_spacers
+
+    if best_order is None:
+        return None
+
+    segments = []
+    for idx, pos in enumerate(best_order):
+        c = candidates[pos]
+        segments.append({"type": "peptide", "label": c["label"], "sequence": c["peptide"]})
+        if idx < len(best_spacers) and best_spacers[idx] != "None":
+            segments.append({"type": "spacer", "label": best_spacers[idx], "sequence": best_spacers[idx]})
+
+    full_peptide = "".join(s["sequence"] for s in segments)
+    return {
+        "segments": segments,
+        "lowest_junction_ic50_nm": round(best_bottleneck, 1),
+        "full_peptide_sequence": full_peptide,
+        "full_dna_sequence": _back_translate(full_peptide),
+    }

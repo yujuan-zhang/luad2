@@ -29,6 +29,15 @@ HIGH/MODERATE/LOW/MODIFIER 分级）都是接口直接返回的；`protein_chang
   ```bash
   mhcflurry-downloads fetch models_class1_presentation
   ```
+- **vaccine construct（`design_vaccine_construct()`）**：把 top 5 个 neoantigen 拼成一条疫苗肽链，核心问题是
+  两个肽拼接处可能意外产生一个新的、没设计过的强结合表位（junctional epitope）——这是 pVACtools 自带的
+  `pvacvector` 工具要解决的事，但**没有直接调用它的 CLI**：实测它对每一个（HLA型别 × 表位长度 × spacer）
+  组合都单独起一次进程重新加载 MHCflurry 模型，这个case（5个候选×6个HLA型别）跑一轮要 1.5 小时以上，是
+  跟当初 pVACtools 自带 wrapper 类同一个性能问题（10+分钟 vs 批量调用几十秒），只是这次严重得多。用的是同一个
+  解法：把所有候选拼接点（每对肽 × 每种spacer）产生的候选表位一次性批量丢给 `_run_mhcflurry`，再对5个候选的
+  全排列（120种，直接暴力枚举，不用模拟退火）挑出"最弱那个拼接点的结合力最强"这个目标下最优的排列+spacer组合。
+  真实MHCflurry模型、真实的"避免拼接处产生强结合表位"这个科学目标，只是没有照搬pVACvector自己的代码
+  （它的模拟退火寻路 + 多算法取中位数的打分方式在只用一个算法（MHCflurry）时也用不上）。
 
 ## Pipeline Funnel
 
@@ -84,9 +93,9 @@ streamlit run frontend/streamlit_app.py
 
 浏览器打开 Streamlit 给出的地址（默认 http://localhost:8501），默认打开就直接看到 TCGA-38-4627 的结果
 （读的是预先算好的缓存，见下）。上传自己的 VCF/expression/HLA 再点「Run analysis」才会真的调后端跑一遍
-（约 1 分钟，真实 MHC binding 预测）。
+（约 2 分钟，真实 MHC binding 预测 + vaccine construct 设计）。
 
-## Demo 结果预计算（避免每次都重新跑 ~1 分钟的真实预测）
+## Demo 结果预计算（避免每次都重新跑 ~2 分钟的真实预测）
 
 默认病例的结果不会变，没必要每次打开网页都重新跑一遍真实 pipeline。`scripts/precompute_demo.py` 把
 `run_pipeline()` 的结果存成 `data/demo/precomputed_result.json`（~550KB，已提交进仓库），前端默认直接读

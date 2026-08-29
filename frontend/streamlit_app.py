@@ -376,8 +376,8 @@ has_upload = bool(vcf_file or expression_file or hla_file)
 if st.sidebar.button("Run Analysis →", type="primary"):
     if not has_upload:
         # Demo case's answer doesn't change between runs -- load the
-        # precomputed result instead of re-running the ~1 minute real MHC
-        # binding prediction.
+        # precomputed result instead of re-running the ~2 minute real MHC
+        # binding prediction (neoantigens + vaccine construct junction scan).
         st.session_state["result"] = load_precomputed_demo()
     else:
         files = {}
@@ -388,7 +388,7 @@ if st.sidebar.button("Run Analysis →", type="primary"):
         if hla_file:
             files["hla"] = (hla_file.name, hla_file.getvalue())
         try:
-            with st.spinner("Running analysis... (real MHC binding prediction takes about a minute)"):
+            with st.spinner("Running analysis... (real MHC binding prediction + vaccine construct design takes about 2 minutes)"):
                 resp = requests.post(f"{API_URL}/analyze", files=files, timeout=300)
             resp.raise_for_status()
             st.session_state["result"] = resp.json()
@@ -519,6 +519,48 @@ with tab_neo:
 
         st.markdown(f"##### Full Ranking ({len(neoantigens)})")
         st.dataframe(pd.DataFrame(neoantigens), use_container_width=True, hide_index=True)
+
+        construct = result.get("vaccine_construct")
+        if construct:
+            st.markdown("##### Vaccine Construct")
+            st.caption(
+                "Top candidates above joined into one peptide chain, ordered (and spaced) to keep the "
+                "worst accidentally-created junction epitope as weak a binder as possible."
+            )
+            chain_html = "<div style='display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem;'>"
+            for i, seg in enumerate(construct["segments"]):
+                if i > 0:
+                    chain_html += "<span style='opacity:0.4;'>→</span>"
+                if seg["type"] == "peptide":
+                    chain_html += (
+                        "<div style='background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; "
+                        "padding:0.4rem 0.6rem;'>"
+                        f"<div style='font-size:0.72rem; font-weight:700; color:#1E3A8A;'>{html.escape(seg['label'])}</div>"
+                        f"<div style='font-family:monospace; font-size:0.72rem; opacity:0.75;'>{html.escape(seg['sequence'])}</div>"
+                        "</div>"
+                    )
+                else:
+                    chain_html += (
+                        "<div style='background:#F1F5F9; border:1px dashed #94A3B8; border-radius:8px; "
+                        "padding:0.4rem 0.6rem; text-align:center;'>"
+                        "<div style='font-size:0.65rem; opacity:0.6;'>spacer</div>"
+                        f"<div style='font-family:monospace; font-size:0.72rem;'>{html.escape(seg['sequence'])}</div>"
+                        "</div>"
+                    )
+            chain_html += "</div>"
+            st.markdown(chain_html, unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='margin-top:0.6rem; font-size:0.85rem;'>"
+                f"<span class='luad-badge luad-badge--info'>Weakest junction: {construct['lowest_junction_ic50_nm']} nM</span> "
+                f"<span style='opacity:0.6;'>higher = safer (no strong off-target binder created at any join)</span>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+            with st.expander("Full construct sequence (peptide + back-translated DNA)"):
+                st.markdown("**Peptide**")
+                st.code(construct["full_peptide_sequence"], language=None)
+                st.markdown("**DNA (back-translated, single codon per residue)**")
+                st.code(construct["full_dna_sequence"], language=None)
 
 # ── Pathways: click a summary card to select it, one detail view below ──────
 st.subheader("Affected Pathways")

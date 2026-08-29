@@ -1259,6 +1259,48 @@
       "functional_impact": "MODERATE"
     }
   ],
+  "vaccine_construct": {
+    "segments": [
+      {
+        "type": "peptide",
+        "label": "CD34 p.G29E",
+        "sequence": "ALCLLSLLPSEFMSLDNNGTA"
+      },
+      {
+        "type": "peptide",
+        "label": "CHD9 p.R1787H",
+        "sequence": "TQSALTTRLRHLITAYQRTNK"
+      },
+      {
+        "type": "spacer",
+        "label": "HHHH",
+        "sequence": "HHHH"
+      },
+      {
+        "type": "peptide",
+        "label": "CDKAL1 p.R162C",
+        "sequence": "LSIIGVQQIDCVVEVVEETIK"
+      },
+      {
+        "type": "peptide",
+        "label": "TMEM106B p.Y197C",
+        "sequence": "IGPLDMKQIDCTVPTVIAEEM"
+      },
+      {
+        "type": "spacer",
+        "label": "HHHH",
+        "sequence": "HHHH"
+      },
+      {
+        "type": "peptide",
+        "label": "ZNF425 p.A711V",
+        "sequence": "KGFLQKRSLKVHLCLHSGERP"
+      }
+    ],
+    "lowest_junction_ic50_nm": 137.4,
+    "full_peptide_sequence": "ALCLLSLLPSEFMSLDNNGTATQSALTTRLRHLITAYQRTNKHHHHLSIIGVQQIDCVVEVVEETIKIGPLDMKQIDCTVPTVIAEEMHHHHKGFLQKRSLKVHLCLHSGERP",
+    "full_dna_sequence": "GCCCTGTGCCTGCTGAGCCTGCTGCCCAGCGAGTTCATGAGCCTGGACAACAACGGCACCGCCACCCAGAGCGCCCTGACCACCAGACTGAGACACCTGATCACCGCCTACCAGAGAACCAACAAGCACCACCACCACCTGAGCATCATCGGCGTGCAGCAGATCGACTGCGTGGTGGAGGTGGTGGAGGAGACCATCAAGATCGGCCCCCTGGACATGAAGCAGATCGACTGCACCGTGCCCACCGTGATCGCCGAGGAGATGCACCACCACCACAAGGGCTTCCTGCAGAAGAGAAGCCTGAAGGTGCACCTGTGCCTGCACAGCGGCGAGAGACCC"
+  },
   "pathways": [
     {
       "name": "MAPK signaling pathway",
