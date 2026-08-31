@@ -138,6 +138,17 @@ Resources:
             -o /usr/local/lib/docker/cli-plugins/docker-compose
           chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
+          # buildx is a separate plugin ("compose build" needs it) --
+          # buildx's release filenames embed the version number (unlike
+          # compose's), so there's no version-agnostic "latest" URL; resolve
+          # the current release via the API instead of hardcoding a version
+          # that will eventually go stale.
+          BUILDX_URL=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest \
+            | grep browser_download_url | grep 'linux-amd64"' \
+            | grep -v -E 'sbom|provenance|sigstore' | cut -d '"' -f4)
+          curl -SL "$BUILDX_URL" -o /usr/local/lib/docker/cli-plugins/docker-buildx
+          chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
           git clone ${GitHubRepoUrl} /opt/luadtx
           cd /opt/luadtx
 
