@@ -330,37 +330,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("### Patient / Case")
-_case_meta = json.loads(CASE_METADATA_PATH.read_text())
-_clinical = _case_meta.get("clinical", {})
-_clinical_line = " &nbsp;·&nbsp; ".join(
-    html.escape(str(v)) for v in [
-        _clinical.get("sex"),
-        f"Age {_clinical.get('age_at_diagnosis')}" if _clinical.get("age_at_diagnosis") is not None else None,
-        _clinical.get("stage"),
-        f"Vital status: {_clinical.get('vital_status')}" if _clinical.get("vital_status") else None,
-        f"Smoking history: {_clinical.get('smoking_history')}" if _clinical.get("smoking_history") else None,
-    ] if v
-)
-st.markdown(
-    f"""
-    <div class="luad-card luad-card--accent-top">
-      <span class="luad-badge luad-badge--info">TCGA-38-4627</span>
-      <span class="luad-badge luad-badge--info">LUAD</span>
-      <span class="luad-badge luad-badge--muted">Demo Case</span>
-      <div style="margin-top:0.5rem; font-size:0.85rem; opacity:0.8;">{_clinical_line}</div>
-      <div style="margin-top:0.6rem;">
-        <span class="luad-badge luad-badge--success">✓ Somatic VCF</span>
-        <span class="luad-badge luad-badge--success">✓ Tumor RNA</span>
-        <span class="luad-badge luad-badge--success">✓ Real Clinical (GDC)</span>
-        <span class="luad-badge luad-badge--warning">⚠ Synthetic HLA</span>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
 @st.cache_data
 def load_precomputed_demo():
     return json.loads(PRECOMPUTED_PATH.read_text())
@@ -371,6 +340,16 @@ st.sidebar.caption("Leave blank to use the built-in TCGA-38-4627 case.")
 vcf_file = st.sidebar.file_uploader("① Somatic VCF — GZ/VCF, max 200MB", type=["gz", "vcf"])
 expression_file = st.sidebar.file_uploader("② Tumor Expression — GZ/TSV, max 200MB", type=["gz", "tsv"])
 hla_file = st.sidebar.file_uploader("③ HLA Typing — TSV, max 200MB", type=["tsv"])
+metadata_file = st.sidebar.file_uploader(
+    "④ Clinical Metadata (optional) — JSON",
+    type=["json"],
+    help="Same shape as data/demo/case_metadata.json. Purely for display in the Patient/Case card below -- not sent to the analysis pipeline.",
+)
+case_id_input = st.sidebar.text_input(
+    "Case ID (optional)", value="",
+    placeholder="e.g. TCGA-05-4244",
+    help="Tags this run in the database (analysis_results.case_id).",
+)
 has_upload = bool(vcf_file or expression_file or hla_file)
 
 if st.sidebar.button("Run Analysis →", type="primary"):
@@ -379,6 +358,7 @@ if st.sidebar.button("Run Analysis →", type="primary"):
         # precomputed result instead of re-running the ~2 minute real MHC
         # binding prediction (neoantigens + vaccine construct junction scan).
         st.session_state["result"] = load_precomputed_demo()
+        st.session_state["is_demo"] = True
     else:
         files = {}
         if vcf_file:
@@ -387,11 +367,28 @@ if st.sidebar.button("Run Analysis →", type="primary"):
             files["expression"] = (expression_file.name, expression_file.getvalue())
         if hla_file:
             files["hla"] = (hla_file.name, hla_file.getvalue())
+        data = {"case_id": case_id_input} if case_id_input else {}
         try:
             with st.spinner("Running analysis... (real MHC binding prediction + vaccine construct design takes about 2 minutes)"):
-                resp = requests.post(f"{API_URL}/analyze", files=files, timeout=300)
+                resp = requests.post(f"{API_URL}/analyze", files=files, data=data, timeout=300)
             resp.raise_for_status()
             st.session_state["result"] = resp.json()
+            st.session_state["is_demo"] = False
+            st.session_state["uploaded_names"] = {
+                "vcf": vcf_file.name if vcf_file else None,
+                "expression": expression_file.name if expression_file else None,
+                "hla": hla_file.name if hla_file else None,
+            }
+            custom_meta = None
+            if metadata_file:
+                try:
+                    custom_meta = json.loads(metadata_file.getvalue().decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    st.warning("Clinical Metadata file isn't valid JSON -- ignoring it, showing the case without clinical info.")
+            st.session_state["custom_clinical_meta"] = custom_meta
+            st.session_state["case_label"] = (
+                (custom_meta or {}).get("case_id") or case_id_input or None
+            )
         except requests.RequestException:
             st.error(
                 "Couldn't reach the analysis backend. Live analysis of uploaded files needs "
@@ -402,8 +399,94 @@ if st.sidebar.button("Run Analysis →", type="primary"):
 # Show the demo result on first load, without requiring a click.
 if "result" not in st.session_state:
     st.session_state["result"] = load_precomputed_demo()
+    st.session_state["is_demo"] = True
 
 result = st.session_state["result"]
+is_demo = st.session_state.get("is_demo", True)
+
+st.markdown("### Patient / Case")
+if is_demo:
+    _case_meta = json.loads(CASE_METADATA_PATH.read_text())
+    _clinical = _case_meta.get("clinical", {})
+    _clinical_line = " &nbsp;·&nbsp; ".join(
+        html.escape(str(v)) for v in [
+            _clinical.get("sex"),
+            f"Age {_clinical.get('age_at_diagnosis')}" if _clinical.get("age_at_diagnosis") is not None else None,
+            _clinical.get("stage"),
+            f"Vital status: {_clinical.get('vital_status')}" if _clinical.get("vital_status") else None,
+            f"Smoking history: {_clinical.get('smoking_history')}" if _clinical.get("smoking_history") else None,
+        ] if v
+    )
+    st.markdown(
+        f"""
+        <div class="luad-card luad-card--accent-top">
+          <span class="luad-badge luad-badge--info">TCGA-38-4627</span>
+          <span class="luad-badge luad-badge--info">LUAD</span>
+          <span class="luad-badge luad-badge--muted">Demo Case</span>
+          <div style="margin-top:0.5rem; font-size:0.85rem; opacity:0.8;">{_clinical_line}</div>
+          <div style="margin-top:0.6rem;">
+            <span class="luad-badge luad-badge--success">✓ Somatic VCF</span>
+            <span class="luad-badge luad-badge--success">✓ Tumor RNA</span>
+            <span class="luad-badge luad-badge--success">✓ Real Clinical (GDC)</span>
+            <span class="luad-badge luad-badge--warning">⚠ Synthetic HLA</span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    _names = st.session_state.get("uploaded_names", {})
+    _case_label = st.session_state.get("case_label")
+    _custom_meta = st.session_state.get("custom_clinical_meta")
+    _file_line = " &nbsp;·&nbsp; ".join(
+        html.escape(f"{k}: {v}") for k, v in _names.items() if v
+    ) or "using demo defaults for any file not uploaded"
+
+    if _custom_meta:
+        _clinical = _custom_meta.get("clinical", {})
+        _clinical_line = " &nbsp;·&nbsp; ".join(
+            html.escape(str(v)) for v in [
+                _clinical.get("sex"),
+                f"Age {_clinical.get('age_at_diagnosis')}" if _clinical.get("age_at_diagnosis") is not None else None,
+                _clinical.get("stage"),
+                f"Vital status: {_clinical.get('vital_status')}" if _clinical.get("vital_status") else None,
+                f"Smoking history: {_clinical.get('smoking_history')}" if _clinical.get("smoking_history") else None,
+            ] if v
+        )
+        _badges = (
+            f'<span class="luad-badge luad-badge--info">{html.escape(_case_label or "Custom Upload")}</span>'
+            + (f'<span class="luad-badge luad-badge--info">{html.escape(str(_custom_meta.get("cancer_type")))}</span>' if _custom_meta.get("cancer_type") else "")
+        )
+        st.markdown(
+            f"""
+            <div class="luad-card luad-card--accent-top">
+              {_badges}
+              <div style="margin-top:0.5rem; font-size:0.85rem; opacity:0.8;">{_clinical_line}</div>
+              <div style="margin-top:0.6rem; font-size:0.75rem; opacity:0.6;">{_file_line}</div>
+              <div style="margin-top:0.6rem;">
+                <span class="luad-badge luad-badge--success">✓ Clinical Metadata Provided</span>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        _badges = "".join(
+            f'<span class="luad-badge luad-badge--info">{html.escape(_case_label)}</span>'
+            if _case_label else ""
+        ) + '<span class="luad-badge luad-badge--muted">Custom Upload</span>'
+        st.markdown(
+            f"""
+            <div class="luad-card luad-card--accent-top">
+              {_badges}
+              <div style="margin-top:0.5rem; font-size:0.85rem; opacity:0.8;">{_file_line}</div>
+              <div style="margin-top:0.6rem; font-size:0.8rem; opacity:0.6;">
+                No clinical metadata available for custom uploads (④ Clinical Metadata not provided).
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 # ── Analysis Flow: horizontal KPI strip ──────────────────────────────────────
 st.markdown("<div id='analysis'></div>", unsafe_allow_html=True)
