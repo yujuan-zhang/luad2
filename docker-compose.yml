@@ -5,12 +5,26 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: luadtx
-      POSTGRES_PASSWORD: luadtx_dev
+      # Falls back to a fixed dev password when no .env is present (local
+      # dev); on AWS this is overridden by an .env file the CloudFormation
+      # UserData script writes from Secrets Manager -- see infra/cloudformation.yaml.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-luadtx_dev}
       POSTGRES_DB: luadtx
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    environment:
+      # Service name "postgres" is the hostname on Docker's internal network
+      # -- not localhost, which only ever refers to backend's own container.
+      DATABASE_URL: postgresql://luadtx:${POSTGRES_PASSWORD:-luadtx_dev}@postgres:5432/luadtx
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:
