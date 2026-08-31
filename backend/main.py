@@ -3,9 +3,10 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend import db
 from pipelines.downstream.main import run_pipeline
 
 app = FastAPI(title="LUAD Precision Platform API")
@@ -20,6 +21,11 @@ app.add_middleware(
 DEMO_DIR = Path(__file__).resolve().parent.parent / "data" / "demo"
 
 
+@app.on_event("startup")
+def on_startup():
+    db.init_db()
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -30,6 +36,7 @@ async def analyze(
     vcf: Optional[UploadFile] = File(None),
     expression: Optional[UploadFile] = File(None),
     hla: Optional[UploadFile] = File(None),
+    case_id: Optional[str] = Form(None),
 ):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -37,6 +44,7 @@ async def analyze(
         expression_path = await _save_or_default(expression, tmp_path, "expression.tsv.gz", DEMO_DIR / "expression.tsv.gz")
         hla_path = await _save_or_default(hla, tmp_path, "hla.tsv", DEMO_DIR / "hla.tsv")
         result = run_pipeline(vcf_path, expression_path, hla_path)
+    db.save_result(case_id, result)
     return result
 
 
