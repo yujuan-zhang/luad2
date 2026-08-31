@@ -1,0 +1,17 @@
+{
+  "case_id": "TCGA-05-4244",
+  "cancer_type": "LUAD",
+  "clinical": {
+    "sex": "Not available",
+    "age_at_diagnosis": 70.5,
+    "vital_status": "Alive",
+    "race": "Not reported",
+    "ethnicity": "Not reported",
+    "stage": "Stage IV",
+    "stage_tnm": "T2 N2 M1",
+    "primary_diagnosis": "Adenocarcinoma, NOS",
+    "smoking_history": "Not available",
+    "overall_survival_days": 0.0
+  },
+  "note": "Real somatic variants (220 SNVs, from Masked Somatic Mutation MAF) and real tumor gene expression (TPM, from STAR-Counts) from GDC (api.gdc.cancer.gov, TCGA-LUAD) for this case. Clinical fields above are real GDC (api.gdc.cancer.gov/cases) data -- sex and smoking_history are genuinely not recorded for this patient in GDC, shown as 'Not available' rather than guessed. overall_survival_days is GDC's own days_to_last_follow_up value (0 -- no meaningful follow-up interval recorded beyond diagnosis for this case, not literally zero survival; vital_status is Alive). HLA typing is synthetic (no real HLA available for this case)."
+}
