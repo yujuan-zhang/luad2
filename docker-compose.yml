@@ -26,5 +26,18 @@ services:
     depends_on:
       - postgres
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      # Service name "backend" is the hostname on Docker's internal network
+      # -- reaches the backend container directly, no public round-trip.
+      API_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:

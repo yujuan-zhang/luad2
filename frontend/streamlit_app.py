@@ -2,13 +2,14 @@ import base64
 import html
 import inspect
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 import requests
 import streamlit as st
 
-API_URL = "http://localhost:8000"
+API_URL = os.environ.get("API_URL", "http://localhost:8000")
 PRECOMPUTED_PATH = Path(__file__).resolve().parent.parent / "data" / "demo" / "precomputed_result.json"
 CASE_METADATA_PATH = Path(__file__).resolve().parent.parent / "data" / "demo" / "case_metadata.json"
 

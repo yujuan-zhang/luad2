@@ -106,11 +106,15 @@ Resources:
   BackendSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: LUADtx backend -- API port only, no SSH
+      GroupDescription: LUADtx backend + frontend ports only, no SSH
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 8000
           ToPort: 8000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8501
+          ToPort: 8501
           CidrIp: 0.0.0.0/0
 
   # ── The instance itself ──
@@ -122,6 +126,13 @@ Resources:
       IamInstanceProfile: !Ref Ec2InstanceProfile
       SecurityGroupIds:
         - !Ref BackendSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20  # default 8GB isn't enough -- the tensorflow-based
+                             # backend image alone is 4.5GB; hit "disk full"
+                             # risk on the first real deploy.
+            VolumeType: gp3
       Tags:
         - Key: Name
           Value: luadtx-backend
