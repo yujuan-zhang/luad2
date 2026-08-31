@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -5,10 +6,28 @@ import pandas as pd
 from . import civic, pathway, pvactools, vep
 
 
+class _StageTimer:
+    """Prints wall-clock time per pipeline stage -- these are network/model
+    calls to external services (VEP, UniProt, CIViC, mhcflurry), so runtime
+    is dominated by I/O latency, not CPU; this makes it visible which stage
+    to optimize instead of guessing."""
+
+    def __init__(self):
+        self._t = time.perf_counter()
+
+    def lap(self, label):
+        now = time.perf_counter()
+        print(f"[timing] {label}: {now - self._t:.1f}s")
+        self._t = now
+
+
 def run_pipeline(vcf_path, expression_path, hla_path):
+    timer = _StageTimer()
     variants = vep.annotate_variants(vcf_path)
+    timer.lap("vep.annotate_variants")
     protein_altering = pvactools.filter_protein_altering(variants)
     drug_matches = civic.match_drugs(protein_altering)
+    timer.lap("civic.match_drugs")
 
     # Actionable mutations go to the targeted-therapy branch; everything
     # else that clears the expression + HLA-presentation bar in pvactools
@@ -31,8 +50,11 @@ def run_pipeline(vcf_path, expression_path, hla_path):
     # only returns the peptide-allele pairs that also clear the IC50 bar.
     with_peptide = pvactools.variants_with_peptide(expressed)
     neoantigens, peptide_hla_pairs = pvactools.predict_neoantigens(expressed, hla_alleles)
+    timer.lap("pvactools.predict_neoantigens")
     vaccine_construct = pvactools.design_vaccine_construct(neoantigens, hla_alleles)
+    timer.lap("pvactools.design_vaccine_construct")
     pathways = pathway.analyze_pathways(protein_altering, expression_df)
+    timer.lap("pathway.analyze_pathways")
 
     # This is the neoantigen branch's flow specifically, so the actionable
     # variant that diverged to the targeted-therapy branch isn't a stage

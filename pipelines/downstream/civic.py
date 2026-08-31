@@ -17,6 +17,7 @@ A licensed evidence API (e.g. OncoKB, once a token is available) could be
 added as a third source later without changing `match_drugs`'s interface.
 """
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
@@ -158,11 +159,22 @@ def _dedupe(matches):
     return [m for _, m in best.values()]
 
 
-def match_drugs(variants, use_civic=True):
+def match_drugs(variants, use_civic=True, max_workers=10):
+    """KB matching is local (cheap, sequential). CIViC matching is one
+    network round-trip per variant -- with a real case's worth of
+    protein-altering variants (100+), doing those sequentially dominates
+    the whole pipeline's runtime, so they're dispatched concurrently
+    (network-bound, so thread-pool concurrency is real wall-clock
+    parallelism despite the GIL)."""
     matches = []
     for v in variants:
-        gene, protein_change, consequence = v["gene"], v["protein_change"], v["consequence"]
-        matches.extend(_kb_matches(gene, protein_change, consequence))
-        if use_civic:
-            matches.extend(_civic_matches(gene, protein_change))
+        matches.extend(_kb_matches(v["gene"], v["protein_change"], v["consequence"]))
+
+    if use_civic and variants:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for result in executor.map(
+                lambda v: _civic_matches(v["gene"], v["protein_change"]), variants
+            ):
+                matches.extend(result)
+
     return _dedupe(matches)
