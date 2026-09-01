@@ -41,8 +41,13 @@ services:
   # Reverse proxy + TLS termination -- the only service with published
   # ports. Fronts frontend (Streamlit UI) and backend (/api/) behind
   # https://luadtx.stoichioomics.com. See nginx/conf.d/luadtx.conf.
+  # Self-reloads every 12h so a cert renewed by the certbot loop below
+  # gets picked up without any host-level cron (nothing to install on
+  # Amazon Linux 2023, which has no cron package by default).
   nginx:
     image: nginx:1.27-alpine
+    entrypoint: >-
+      /bin/sh -c "while :; do sleep 12h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
     ports:
       - "80:80"
       - "443:443"
@@ -54,14 +59,20 @@ services:
       - backend
       - frontend
 
-  # Not a long-running service -- invoked on demand via
-  # `docker compose run --rm certbot ...` to issue/renew the cert.
+  # Long-running renewal loop, started automatically by `docker compose
+  # up`. `certbot renew` is a no-op until ~30 days before expiry, so this
+  # just polls harmlessly the rest of the time. For the one-time initial
+  # issuance (no cert to renew yet), invoke certonly directly with
+  # `docker compose run --rm --entrypoint certbot certbot certonly ...`
+  # -- --entrypoint overrides the loop below back to the real certbot
+  # binary for that one command.
   certbot:
     image: certbot/certbot
+    entrypoint: >-
+      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot -q; sleep 12h & wait $${!}; done;"
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    entrypoint: "true"
 
 volumes:
   postgres_data:

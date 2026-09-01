@@ -217,17 +217,16 @@ Resources:
           docker compose up -d --build
 
           # Real cert -- webroot mode, served through the nginx that's now
-          # up. No email registered (--register-unsafely-without-email):
-          # renewal is on a cron below regardless of expiry-notice emails.
-          docker compose run --rm certbot certonly --webroot \
-            -w /var/www/certbot -d ${DomainName} \
+          # up. --entrypoint overrides the certbot service's renewal-loop
+          # entrypoint (see docker-compose.yml) for this one-shot call.
+          # No email registered (--register-unsafely-without-email):
+          # renewal doesn't depend on it -- the certbot service's own loop
+          # (started by `up` above) and nginx's self-reload loop handle
+          # renewal automatically from here on, no host cron needed.
+          docker compose run --rm --entrypoint certbot certbot certonly \
+            --webroot -w /var/www/certbot -d ${DomainName} \
             --register-unsafely-without-email --agree-tos -n
           docker compose exec nginx nginx -s reload
-
-          # Renew twice daily (certbot no-ops until near expiry) and
-          # reload nginx so a renewed cert is picked up.
-          echo "17 3,15 * * * root cd /opt/luadtx && docker compose run --rm certbot renew -q && docker compose exec nginx nginx -s reload" \
-            > /etc/cron.d/luadtx-certbot-renew
 
   # ── Fixed public IP -- without this, a stop/start reassigns a new
   # public IP and breaks the DNS record below. ──
