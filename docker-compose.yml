@@ -21,8 +21,8 @@ services:
       # Service name "postgres" is the hostname on Docker's internal network
       # -- not localhost, which only ever refers to backend's own container.
       DATABASE_URL: postgresql://luadtx:${POSTGRES_PASSWORD:-luadtx_dev}@postgres:5432/luadtx
-    ports:
-      - "8000:8000"
+    # No host port publish -- nginx is the only public entry point now,
+    # reaching this over the internal docker network by service name.
     depends_on:
       - postgres
 
@@ -34,10 +34,34 @@ services:
       # Service name "backend" is the hostname on Docker's internal network
       # -- reaches the backend container directly, no public round-trip.
       API_URL: http://backend:8000
-    ports:
-      - "8501:8501"
+    # No host port publish -- see backend's note above.
     depends_on:
       - backend
+
+  # Reverse proxy + TLS termination -- the only service with published
+  # ports. Fronts frontend (Streamlit UI) and backend (/api/) behind
+  # https://luadtx.stoichioomics.com. See nginx/conf.d/luadtx.conf.
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+
+  # Not a long-running service -- invoked on demand via
+  # `docker compose run --rm certbot ...` to issue/renew the cert.
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "true"
 
 volumes:
   postgres_data:

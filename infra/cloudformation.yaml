@@ -24,6 +24,16 @@ Parameters:
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
     Description: Resolved to the current Amazon Linux 2023 AMI at deploy time -- never a hardcoded, staleable AMI ID.
 
+  DomainName:
+    Type: String
+    Default: luadtx.stoichioomics.com
+    Description: Public hostname the app is served on, fronted by nginx + Let's Encrypt.
+
+  HostedZoneId:
+    Type: String
+    Default: Z09985142J228IBYILENE
+    Description: Route 53 hosted zone (stoichioomics.com) that DomainName's record is created in.
+
 Resources:
 
   # ── S3: backup destination (Postgres dumps / analysis result exports) ──
@@ -100,21 +110,24 @@ Resources:
       Roles:
         - !Ref Ec2Role
 
-  # ── Security group: API port only. No port 22 -- shell access is via
-  # SSM Session Manager (covered by the IAM role above), so there is no
-  # SSH key to manage and no inbound SSH surface at all. ──
+  # ── Security group: HTTP/HTTPS only, via nginx. No port 22 -- shell
+  # access is via SSM Session Manager (covered by the IAM role above), so
+  # there is no SSH key to manage and no inbound SSH surface at all. 8000
+  # and 8501 are intentionally not opened here -- nginx is the only public
+  # entry point (see docker-compose.yml); backend/frontend are reached
+  # over the internal docker network. ──
   BackendSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: LUADtx backend + frontend ports only, no SSH
+      GroupDescription: LUADtx HTTP/HTTPS only, no SSH
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 8000
-          ToPort: 8000
+          FromPort: 80
+          ToPort: 80
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 8501
-          ToPort: 8501
+          FromPort: 443
+          ToPort: 443
           CidrIp: 0.0.0.0/0
 
   # ── The instance itself ──
@@ -191,12 +204,56 @@ Resources:
                   awslogs-stream: backend
           EOF
 
+          # nginx (in docker-compose.yml) refuses to start without cert
+          # files at these paths -- seed a throwaway self-signed cert so it
+          # can come up and serve the ACME HTTP-01 challenge on :80, then
+          # certbot overwrites it with the real Let's Encrypt cert below.
+          mkdir -p certbot/conf/live/${DomainName} certbot/www
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout certbot/conf/live/${DomainName}/privkey.pem \
+            -out certbot/conf/live/${DomainName}/fullchain.pem \
+            -subj "/CN=${DomainName}"
+
           docker compose up -d --build
+
+          # Real cert -- webroot mode, served through the nginx that's now
+          # up. No email registered (--register-unsafely-without-email):
+          # renewal is on a cron below regardless of expiry-notice emails.
+          docker compose run --rm certbot certonly --webroot \
+            -w /var/www/certbot -d ${DomainName} \
+            --register-unsafely-without-email --agree-tos -n
+          docker compose exec nginx nginx -s reload
+
+          # Renew twice daily (certbot no-ops until near expiry) and
+          # reload nginx so a renewed cert is picked up.
+          echo "17 3,15 * * * root cd /opt/luadtx && docker compose run --rm certbot renew -q && docker compose exec nginx nginx -s reload" \
+            > /etc/cron.d/luadtx-certbot-renew
+
+  # ── Fixed public IP -- without this, a stop/start reassigns a new
+  # public IP and breaks the DNS record below. ──
+  BackendEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref BackendInstance
+
+  # ── DNS: luadtx.stoichioomics.com -> the Elastic IP above. ──
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      TTL: "300"
+      ResourceRecords:
+        - !Ref BackendEip
 
 Outputs:
   InstancePublicIp:
-    Description: Public IP -- API reachable at http://<this>:8000
-    Value: !GetAtt BackendInstance.PublicIp
+    Description: Elastic IP -- app reachable at https://<DomainName>, this is what the DNS record points to
+    Value: !Ref BackendEip
+  AppUrl:
+    Value: !Sub "https://${DomainName}"
   BackupBucketName:
     Value: !Ref BackupBucket
   DbSecretArn:
